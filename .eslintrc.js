@@ -16,7 +16,6 @@ module.exports = {
     indent: ['error', 2],
     quotes: ['error', 'single'],
     semi: ['error', 'always'],
-    'prettier/prettier': ['error', { singleQuote: true }],
     'no-trailing-spaces': 'error',
     'no-multiple-empty-lines': ['error', { 'max': 1, 'maxEOF': 0 }],
     '@typescript-eslint/explicit-module-boundary-types': 'off',
