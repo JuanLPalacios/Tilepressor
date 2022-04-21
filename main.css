@@ -79,4 +79,12 @@
     justify-content:center;
     background: var(--bg-color-1);
   }
+  #view > *{
+    display: flex;
+    flex: 1 1 auto;
+  }
+
+  .Display{
+    flex: 1 1 auto;
+  } 
   

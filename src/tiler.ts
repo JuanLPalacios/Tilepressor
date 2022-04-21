@@ -1,4 +1,14 @@
-export function mapTiles(img:HTMLImageElement, width = 8, height = 8){
+export interface ITile {
+  coords:{
+    x:number,
+    y:number
+  }[],
+  tileData: ImageData,
+  times: number,
+  uuid: number
+}
+
+export function mapTiles(img:HTMLImageElement, width = 8, height = 8):{[key:string]:ITile }{
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   canvas.width = Math.max(256, img.width);
