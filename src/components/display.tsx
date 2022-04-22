@@ -96,7 +96,7 @@ export default class Display extends Component {
       // file load
       img.onload = () => {
         this.canvas.width = img.width;
-        this.canvas.width = img.height;
+        this.canvas.height = img.height;
         this.renderTiles(mapTiles(img));
       };
       img.src = reader.result.toString();
