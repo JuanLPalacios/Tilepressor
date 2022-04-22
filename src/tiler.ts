@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 export interface ITile {
   coords:{
     x:number,
@@ -11,10 +12,10 @@ export interface ITile {
 export function mapTiles(img:HTMLImageElement, width = 8, height = 8):{[key:string]:ITile }{
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  canvas.width = Math.max(256, img.width);
-  canvas.height = Math.max(256, img.height);
-  canvas.style.width = `${Math.max(256, img.width) * 2}px`;
-  canvas.style.height = `${Math.max(256, img.height) * 2}px`;
+  canvas.width = Math.ceil(img.width/width)*8;
+  canvas.height = Math.ceil(img.height/height)*8;
+  canvas.style.width = `${Math.ceil(img.width/width)*8 * 2}px`;
+  canvas.style.height = `${Math.ceil(img.height/height)*8 * 2}px`;
 
   ctx.fillStyle = '#e0f8cf';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -25,7 +26,6 @@ export function mapTiles(img:HTMLImageElement, width = 8, height = 8):{[key:stri
   let uuid = 0;
   for (let y = 0; y < img.height; y += 8) {
     for (let x = 0; x < img.width; x += 8) {
-      // console.log(x, y);
       const tileData = ctx.getImageData(x, y, width, height);
       const index = tileData.data.toString();
       if (tiles[index]) {
@@ -40,6 +40,6 @@ export function mapTiles(img:HTMLImageElement, width = 8, height = 8):{[key:stri
         };
       }
     }
-    return tiles;
   }
+  return tiles;
 }
