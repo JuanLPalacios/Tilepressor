@@ -1,6 +1,6 @@
 # <img src="./public/icons/logo192.png" alt="Tilepressor logo" width="25"/> Tilepressor
 
-map/image compressor for 2D tile based images, games, and engines
+map/image compressor for 2D tile-based images, games, and engines
 
 ![Tilepressor](./screenshot.png)
 
@@ -16,7 +16,7 @@ map/image compressor for 2D tile based images, games, and engines
 - Indexed palette filter
 
 ### Installation
-open the [Live Demo Link](https://juanlpalacios.github.io/Tilepressor/) and press the install button in the url bar or 
+open the [Live Demo Link](https://juanlpalacios.github.io/Tilepressor/) and press the install button in the url bar or options on mobile
 ### Setup
 
 
@@ -26,7 +26,7 @@ to set it up you have to first run
 npm install
 ```
 
-after that you can run the local development server with:
+after that, you can run the local development server with:
 ```
 npm run dev
 ```
