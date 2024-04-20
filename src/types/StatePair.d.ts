@@ -1,0 +1,1 @@
+export type StatePair<T = unknown> = [T, Dispatch<SetStateAction<T>>];

@@ -1,45 +1,66 @@
 {
-  "name": "tile-compressor",
-  "version": "1.0.0",
-  "description": "",
-  "main": ".eslintrc.js",
+  "name": "Tilepressor",
+  "version": "0.1.0",
+  "description": "map/image compressor for 2D tile based images, games, and engines",
+  "main": "index.html",
   "directories": {
     "test": "tests"
   },
   "scripts": {
-    "jest": "jest",
-    "test": "jest --watch",
-    "start": "webpack serve --mode development",
-    "build": "webpack --mode production",
-    "lint": "eslint src"
+    "tsc": "tsc --w",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint --ext .js --ignore-path .gitignore .",
+    "preview": "vite preview"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/JuanLPalacios/tile-compressor.git"
+    "url": "git+https://github.com/JuanLPalacios/Tilepressor.git"
   },
-  "keywords": [],
+  "keywords": [
+    "game",
+    "javascript",
+    "editor",
+    "compressor",
+    "tile",
+    "typescript",
+    "game-development",
+    "map-editor",
+    "level-editor",
+    "tilesets"
+  ],
   "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/JuanLPalacios/tile-compressor/issues"
+  "license": "MIT",
+  "dependencies": {
+    "file-saver": "^2.0.5",
+    "jszip": "^3.10.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.0.1",
+    "rgb-lab": "^1.0.0",
+    "vite-plugin-svgr": "^4.1.0"
   },
   "devDependencies": {
     "@types/jest": "^27.0.2",
-    "@types/marked": "^4.0.0",
-    "@typescript-eslint/eslint-plugin": "^5.3.1",
-    "@typescript-eslint/parser": "^5.3.1",
-    "apprun": "^3.28.7",
-    "eslint": "^8.2.0",
-    "jest": "^27.3.1",
-    "marked": "^4.0.10",
-    "source-map-loader": "^3.0.0",
-    "ts-jest": "^27.0.7",
-    "ts-loader": "^9.2.6",
-    "tslib": "^2.3.1",
-    "typescript": "^4.4.4",
-    "webpack": "^5.64.0",
-    "webpack-cli": "^4.9.1",
-    "webpack-dev-server": "^4.4.0"
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^20.8.2",
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.0.3",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.3",
+    "postcss": "^8.4.31",
+    "stylelint": "^16.3.1",
+    "stylelint-config-standard": "^36.0.0",
+    "stylelint-webpack-plugin": "^5.0.0",
+    "tailwindcss": "^3.3.3",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vite-plugin-pwa": "^0.19.8"
   },
-  "homepage": "https://github.com/JuanLPalacios/tile-compressor#readme"
+  "homepage": "https://github.com/JuanLPalacios/Tilepressor#readme"
 }
