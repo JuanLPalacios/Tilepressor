@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "description": "map/image compressor for 2D tile based images, games, and engines",
   "main": "index.html",
+  "homepage": ".",
+  "type": "module",
   "directories": {
     "test": "tests"
   },
@@ -63,6 +65,5 @@
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
     "vite-plugin-pwa": "^0.19.8"
-  },
-  "homepage": "https://github.com/JuanLPalacios/Tilepressor#readme"
+  }
 }
