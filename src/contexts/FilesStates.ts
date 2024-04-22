@@ -12,7 +12,7 @@ export type MapState = {
 
 export type FileListsState = MapState[]
 
-type FileAction =
+export type FileAction =
     AddFile |
     UpdateFile |
     RemoveFile |
