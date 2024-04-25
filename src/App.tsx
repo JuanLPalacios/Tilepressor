@@ -10,7 +10,7 @@ import { MapLabel } from './components/MapLabel';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { OpenFileTab } from './components/OpenFileTab';
 import { OpenFileTabLabel } from './components/OpenFileTabLabel';
-import { openGBStudioZIP, openRaster } from './utilities/fileFormatUtilities';
+import { openFile } from './utilities/fileFormatUtilities';
 
 export const App = () => {
     useRegisterSW({
@@ -31,24 +31,10 @@ export const App = () => {
     const fileSet = (e:React.ChangeEvent<HTMLInputElement>) => {
         const filePicker = e.target;
         if(!filePicker.files)return;
+        setActiveTab(maps.length);
         for (let i = 0; i < filePicker.files.length; i++) {
             const file = filePicker.files[i];
-            const extension = file.name.split('.').pop()
-                ?.toLowerCase();
-            switch (extension) {
-            case 'zip':
-                openGBStudioZIP(dispatchFilesAction, file, setActiveTab, maps, tileDimensions);
-                break;
-            case 'png':
-            case 'jpg':
-            case 'jpeg':
-            case 'bmp':
-            case 'webp':
-                openRaster(dispatchFilesAction, file, setActiveTab, maps, tileDimensions);
-                break;
-            default:
-                break;
-            }
+            openFile(file, dispatchFilesAction, tileDimensions);
         }
     };
     return (
