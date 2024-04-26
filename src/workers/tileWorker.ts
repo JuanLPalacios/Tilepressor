@@ -14,6 +14,7 @@ import { ColorModel } from '../enums/ColorModel';
 import { TileModel } from '../enums/TileModel';
 import { WorkerResponse, CompressorMessageEvent, CompressorMessageData } from '../types/TileWorker';
 import { TaskTypes } from '../enums/TaskType';
+import { hashTiles } from '../utilities/hashUtilities';
 
 declare const self: {
     postMessage(message: WorkerResponse, options?: WindowPostMessageOptions): void;
@@ -58,8 +59,8 @@ self.onmessage = (e: CompressorMessageEvent) => {
 export {};
 
 const getColorsCash:{[key:string]:Color[]} = {};
-function getColorsWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): void {
-    const key = tiles.toString();
+async function getColorsWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): Promise<void> {
+    const key = await hashTiles(tiles);
     const cash = getColorsCash[key];
     if(cash) return self.postMessage({ id, action: TaskTypes.getColors, data: { colors: cash }, progress: 1 });
     let colors = indexColors(tiles);
@@ -84,8 +85,8 @@ function cdt2pixelsWrapper({ props: { tiles }, id }:CompressorMessageData&{id:st
 }
 
 const pixels2dctCash:{[key:string]:SerializableTile[]} = {};
-function pixels2dctWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): void {
-    const key = tiles.toString();
+async function pixels2dctWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): Promise<void> {
+    const key = await hashTiles(tiles);
     const cash = pixels2dctCash[key];
     if(cash) return self.postMessage({ id, action: TaskTypes.pixels2dct, data: { tiles: cash }, progress: 1 });
     tiles.forEach((tile, i)=>{
@@ -98,8 +99,8 @@ function pixels2dctWrapper({ props: { tiles }, id }:CompressorMessageData&{id:st
 }
 
 const rgb2labCash:{[key:string]:SerializableTile[]} = {};
-function rgb2labWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): void {
-    const key = tiles.toString();
+async function rgb2labWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): Promise<void> {
+    const key = await hashTiles(tiles);
     const cash = rgb2labCash[key];
     if(cash) return self.postMessage({ id, action: TaskTypes.rgb2lab, data: { tiles: cash }, progress: 1 });
     tiles.forEach((tile, i)=>{
