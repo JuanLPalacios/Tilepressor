@@ -48,6 +48,28 @@ function openDir(zip: JSZip, dispatchFilesAction: Dispatch<FileAction>, tileDime
                         });
                 }
             });
+            project.spriteSheets.forEach(function (spriteSheet) {
+                const fileName = `assets/sprites/${spriteSheet.filename}`;
+                const zipFile = zip.files[fileName];
+                console.log(fileName);
+                if (zipFile.dir){
+                    openDir(zipFile as never, dispatchFilesAction, tileDimensions);
+                }
+                else{
+                    console.log(fileName);
+                    const file = new File([], fileName);
+                    zipFile.async('arraybuffer')
+                        .then(function(content) {
+                            const buffer = new Uint8Array(content);
+                            const blob = new Blob([buffer.buffer]);
+                            const fileData = URL.createObjectURL(blob);
+                            openFile(file, dispatchFilesAction, tileDimensions, fileData);
+                        },
+                        function(e) {
+                            console.log('Error reading ' + file.name + ' : ' + e.message);
+                        });
+                }
+            });
         });
 }
 
