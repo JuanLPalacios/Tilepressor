@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { mapColors } from '../utilities/tileUtilities';
-import { calculateDivider, generateBsptFromPoints, isFront } from '../utilities/bsp';
+import { bspNode, calculateDivider, generateBsptFromPoints, isFront } from '../utilities/bsp';
 import { indexColors, kMeansPlusPlus, euclideanDistance, pixelPermutedDifferenceDistance, addCentroid } from '../utilities/tileUtilities';
 import { addColor } from '../utilities/colorUtilities';
 import { dct2pixels } from '../utilities/dctUtilities';
@@ -15,6 +15,8 @@ import { TileModel } from '../enums/TileModel';
 import { WorkerResponse, CompressorMessageEvent, CompressorMessageData } from '../types/TileWorker';
 import { TaskTypes } from '../enums/TaskType';
 import { hashTiles } from '../utilities/hashUtilities';
+import { PaletteModel } from '~/enums/PaletteModel';
+import { ColorPalette } from '~/contexts/MenuOptions';
 
 declare const self: {
     postMessage(message: WorkerResponse, options?: WindowPostMessageOptions): void;
@@ -58,15 +60,20 @@ self.onmessage = (e: CompressorMessageEvent) => {
 
 export {};
 
-const getColorsCash:{[key:string]:Color[]} = {};
-async function getColorsWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): Promise<void> {
-    const key = await hashTiles(tiles);
+const getColorsCash:{[key:string]:ColorPalette[]} = {};
+async function getColorsWrapper({ props: { tiles, paletteModel }, id }:CompressorMessageData&{id:string|number}): Promise<void> {
+    const key = (await hashTiles(tiles))+'';
     const cash = getColorsCash[key];
-    if(cash) return self.postMessage({ id, action: TaskTypes.getColors, data: { colors: cash }, progress: 1 });
-    let colors = indexColors(tiles);
-    colors = kMeansPlusPlus(colors, 256, euclideanDistance, addColor, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.getColors, data: { }, progress: progress }); });
-    getColorsCash[key] = colors;
-    self.postMessage({ id, action: TaskTypes.getColors, data: { colors }, progress: 1 });
+    if(cash) return self.postMessage({ id, action: TaskTypes.getColors, data: { colorPalette: cash }, progress: 1 });
+    let groups:SerializableTile[][] = [tiles];
+    if(paletteModel==PaletteModel.GBC) groups = tiles.map(tile =>[tile]);
+    const colorPalette = groups.map((tiles, i)=>{
+        let colors = indexColors(tiles);
+        colors = kMeansPlusPlus(colors, 256, euclideanDistance, addColor, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.getColors, data: { }, progress: progress }); });
+        return { colors };
+    });
+    getColorsCash[key] = colorPalette;
+    self.postMessage({ id, action: TaskTypes.getColors, data: { colorPalette }, progress: 1 });
 }
 
 function kMeansPlusPlusWrapper({ props: { tiles, k, colorModel, tileModel }, id }:CompressorMessageData&{id:string|number}): void {
@@ -120,16 +127,26 @@ function lab2rgbWrapper({ props: { tiles }, id }:CompressorMessageData&{id:strin
     self.postMessage({ id, action: TaskTypes.lab2rgb, data: { tiles }, progress: 1 });
 }
 
-function applyFilterWrapper({ props: { tiles, bspt }, id }:CompressorMessageData&{id:string|number}): void {
+function applyFilterWrapper({ props: { tiles, colorPalette, paletteModel }, id }:CompressorMessageData&{id:string|number}): void {
+    let bspt: bspNode<Color> | undefined;
+    if (paletteModel == PaletteModel.RGBA)
+        return self.postMessage({ id, action: TaskTypes.applyFilter, data: {}, progress: 1 });
+    if(paletteModel == PaletteModel.Indexed){
+        bspt = colorPalette[0].bspt;
+    }
     tiles.forEach((tile, i)=>{
         mapColors(tile, bspt||null);
         self.postMessage({ id, action: TaskTypes.applyFilter, data: { }, progress: (i/tiles.length) });
     });
     self.postMessage({ id, action: TaskTypes.applyFilter, data: { tiles }, progress: 1 });
 }
-function generateBSPTWrapper({ props: { colors }, id }:CompressorMessageData&{id:string|number}): void {
-    const bspt = generateBsptFromPoints(Object.values(colors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront, (progress)=>(progress!=1)&&self.postMessage({ id, action: TaskTypes.generateBSPT, data: { }, progress }));
-    self.postMessage({ id, action: TaskTypes.generateBSPT, data: { bspt }, progress: 1 });
+function generateBSPTWrapper({ props: { colorPalette, paletteModel }, id }:CompressorMessageData&{id:string|number}): void {
+    if (paletteModel == PaletteModel.RGBA)
+        return self.postMessage({ id, action: TaskTypes.applyFilter, data: {}, progress: 1 });
+    self.postMessage({ id, action: TaskTypes.generateBSPT, data: { colorPalette: colorPalette.map(({ colors }, i)=>{
+        const bspt = generateBsptFromPoints(Object.values(colors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront, (progress)=>(progress!=1)&&self.postMessage({ id, action: TaskTypes.generateBSPT, data: { }, progress: i/colorPalette.length + progress/colorPalette.length }));
+        return { bspt, colors };
+    }) }, progress: 1 });
 }
 function cleanCacheWrapper(): void {
     const globalCache = [rgb2labCash, pixels2dctCash, getColorsCash];
