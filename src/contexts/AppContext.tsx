@@ -13,6 +13,7 @@ import { SizeContext } from './Size';
 import { img2Tiles } from '~/utilities/tileUtilities';
 import { GLOBAL_TASK_ID } from './GLOBAL_TASK_ID';
 import { CONFIG_OPTIONS_STORAGE_KEY, ConfigOptions, ConfigOptionsContext } from './ConfigOptions';
+import { PaletteModel } from '~/enums/PaletteModel';
 
 export const AppStateProvider = (props: { children: string | number | boolean | ReactElement<unknown, string | JSXElementConstructor<unknown>> | ReactFragment | ReactPortal | null | undefined; }) => {
     const tileWorker: TileWorker = useMemo(
@@ -24,13 +25,13 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
     const useMenuOptions = useState<MenuOptions>(():MenuOptions=>{
         const value = window.localStorage.getItem(MENU_OPTIONS_STORAGE_KEY);
         if(!value) return {
-            colorModel: ColorModel.Lab,
-            colorPalette: { colors: [] },
+            colorPalette: [{ colors: [] }],
             k: 0,
             selectedPalette: -1,
             tileDimensions: 8,
+            colorModel: ColorModel.Lab,
             tileModel: TileModel.CDT,
-            usePalette: false,
+            paletteModel: PaletteModel.RGBA,
             usePixelData: true
         };
         return JSON.parse(value);
@@ -42,24 +43,29 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
             savedPalettes: [
                 {
                     'name': 'GB studio bg',
-                    'colors': [[48, 104, 80, 255], [134, 192, 108, 255], [224, 248, 207, 255], [7, 24, 33, 255]],
-                    'bspt': { 'divider': [[48, 104, 80, 255], [134, 192, 108, 255]], 'front': [48, 104, 80, 255], 'back': [134, 192, 108, 255], 'inFront': { 'divider': [[48, 104, 80, 255], [7, 24, 33, 255]], 'front': [48, 104, 80, 255], 'back': [7, 24, 33, 255], 'inFront': null, 'inBack': null }, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } }
+                    colorPalette: [{
+                        'colors': [[48, 104, 80, 255], [134, 192, 108, 255], [224, 248, 207, 255], [7, 24, 33, 255]],
+                        'bspt': { 'divider': [[48, 104, 80, 255], [134, 192, 108, 255]], 'front': [48, 104, 80, 255], 'back': [134, 192, 108, 255], 'inFront': { 'divider': [[48, 104, 80, 255], [7, 24, 33, 255]], 'front': [48, 104, 80, 255], 'back': [7, 24, 33, 255], 'inFront': null, 'inBack': null }, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } }
+
+                    }]
                 },
                 {
                     'name': 'GB studio sprite',
-                    'colors': [[101, 255, 0, 255], [7, 24, 33, 255], [134, 192, 108, 255], [224, 248, 207, 255]],
-                    'bspt': { 'divider': [[101, 255, 0, 255], [134, 192, 108, 255]], 'front': [101, 255, 0, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[7, 24, 33, 255], [134, 192, 108, 255]], 'front': [7, 24, 33, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } }
+                    colorPalette: [{
+                        'colors': [[101, 255, 0, 255], [7, 24, 33, 255], [134, 192, 108, 255], [224, 248, 207, 255]],
+                        'bspt': { 'divider': [[101, 255, 0, 255], [134, 192, 108, 255]], 'front': [101, 255, 0, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[7, 24, 33, 255], [134, 192, 108, 255]], 'front': [7, 24, 33, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } }
+                    }]
                 }
             ],
             useGrid: false,
             presets: [
                 {
                     'name': 'GB studio bg',
-                    'options': { 'colorModel': 1, 'colorPalette': { 'colors': [[48, 104, 80, 255], [134, 192, 108, 255], [224, 248, 207, 255], [7, 24, 33, 255]], 'bspt': { 'divider': [[48, 104, 80, 255], [134, 192, 108, 255]], 'front': [48, 104, 80, 255], 'back': [134, 192, 108, 255], 'inFront': { 'divider': [[48, 104, 80, 255], [7, 24, 33, 255]], 'front': [48, 104, 80, 255], 'back': [7, 24, 33, 255], 'inFront': null, 'inBack': null }, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } }, 'k': 192, 'selectedPalette': 0, 'tileDimensions': 8, 'tileModel': 1, 'usePalette': true, 'usePixelData': true }
+                    'options': { 'colorModel': 1, 'colorPalette': [{ 'colors': [[48, 104, 80, 255], [134, 192, 108, 255], [224, 248, 207, 255], [7, 24, 33, 255]], 'bspt': { 'divider': [[48, 104, 80, 255], [134, 192, 108, 255]], 'front': [48, 104, 80, 255], 'back': [134, 192, 108, 255], 'inFront': { 'divider': [[48, 104, 80, 255], [7, 24, 33, 255]], 'front': [48, 104, 80, 255], 'back': [7, 24, 33, 255], 'inFront': null, 'inBack': null }, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } }], 'k': 192, 'selectedPalette': 0, 'tileDimensions': 8, 'tileModel': 1, 'paletteModel': PaletteModel.Indexed, 'usePixelData': true }
                 },
                 {
                     'name': 'GB studio sprite',
-                    'options': { 'colorModel': 1, 'colorPalette': { 'colors': [[101, 255, 0, 255], [7, 24, 33, 255], [134, 192, 108, 255], [224, 248, 207, 255]], 'bspt': { 'divider': [[101, 255, 0, 255], [134, 192, 108, 255]], 'front': [101, 255, 0, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[7, 24, 33, 255], [134, 192, 108, 255]], 'front': [7, 24, 33, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } } }, 'k': 100, 'selectedPalette': 1, 'tileDimensions': 8, 'tileModel': 1, 'usePalette': true, 'usePixelData': true }
+                    'options': { 'colorModel': 1, 'colorPalette': [{ 'colors': [[101, 255, 0, 255], [7, 24, 33, 255], [134, 192, 108, 255], [224, 248, 207, 255]], 'bspt': { 'divider': [[101, 255, 0, 255], [134, 192, 108, 255]], 'front': [101, 255, 0, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[7, 24, 33, 255], [134, 192, 108, 255]], 'front': [7, 24, 33, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } } }], 'k': 100, 'selectedPalette': 1, 'tileDimensions': 8, 'tileModel': 1, 'paletteModel': PaletteModel.Indexed, 'usePixelData': true }
                 }
             ],
             saveFreq: 0
@@ -73,7 +79,7 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
     const [configOptions] = useConfigOptions;
     const [tasks, dispatchTasksAction] = useTasks;
     const [files, dispatchFilesAction] = useFiles;
-    const { usePixelData, colorPalette } = menuOptions;
+    const { usePixelData } = menuOptions;
     const { saveFreq } = configOptions;
     const [size, setSize] = useState({ width: 0, height: 0 });
     const { tileDimensions } = menuOptions;
@@ -102,7 +108,7 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
     if (window.Worker) {
         tileWorker.onmessage = (e: MessageEvent<WorkerResponse>) => {
             const { id, action, progress, data } = e.data;
-            const { tiles, bspt, colors } = data;
+            const { tiles, colorPalette } = data;
             const chain = tasks[id];
             if(!chain)return;
             const i = chain.findIndex(x=>x.action == action);
@@ -116,12 +122,12 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
                     break;
                 case TaskTypes.getColors:
                     if(id == GLOBAL_TASK_ID){
-                        if(colors)setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors } });
+                        if(colorPalette)setMenuOptions({ ...menuOptions, colorPalette });
                     }
                     break;
                 case TaskTypes.generateBSPT:
                     if(id == GLOBAL_TASK_ID){
-                        if(bspt)setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, bspt } });
+                        if(colorPalette)setMenuOptions({ ...menuOptions, colorPalette });
                     }
                     break;
                 default:
@@ -135,7 +141,7 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
                     dispatchTasksAction({ type: 'task/update', payload: { id, task: { ...task, progress } } });
                 }
                 else{
-                    setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, bspt: bspt||null } });
+                    if(colorPalette)setMenuOptions({ ...menuOptions, colorPalette });
                     dispatchFilesAction({ type: 'file/update', payload: { id, file: { newTiles: tiles?.map((tile)=>{
                         const tileDimensions = Math.sqrt(tile.data.length/4);
                         const newTile = { ...tile, raw: createImageData({ width: tileDimensions, height: tileDimensions }) };

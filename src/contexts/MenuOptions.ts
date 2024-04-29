@@ -4,6 +4,7 @@ import { TileModel } from '~/enums/TileModel';
 import { bspNode } from '~/utilities/bsp';
 import { StatePair } from '~/types/StatePair';
 import { Color } from '~/types/Color';
+import { PaletteModel } from '~/enums/PaletteModel';
 
 export const MENU_OPTIONS_STORAGE_KEY = 'MenuOptions';
 
@@ -14,18 +15,19 @@ export type CompressionOptions = {
     tileDimensions:number
     usePixelData: boolean
     selectedPalette: number,
-    usePalette: boolean,
-    colorPalette: ColorPalette
+    colorPalette: ColorPalette[]
 };
 
 export type AbstractionOptions = {
     colorModel: ColorModel,
     tileModel: TileModel
+    paletteModel: PaletteModel
 };
 
 export type SavedColorPalette = {
     name:string,
-}&ColorPalette
+    colorPalette:ColorPalette[]
+}
 
 export type ColorPalette = {
     colors:Color[],
