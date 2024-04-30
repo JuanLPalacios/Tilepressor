@@ -17,8 +17,10 @@ import { serializeTiles } from '../utilities/tileUtilities';
 import { Size } from '../contexts/Size';
 import { TaskTypes } from '../enums/TaskType';
 import { GLOBAL_TASK_ID } from '../contexts/GLOBAL_TASK_ID';
-import { GrClose, GrAdd, GrArchive, GrInProgress, GrDocumentDownload, GrConfigure, GrSave, GrEdit, GrTrash, GrDownload, GrInstallOption  } from 'react-icons/gr';
+import { GrClose, GrArchive, GrInProgress, GrDocumentDownload, GrConfigure, GrSave, GrEdit, GrTrash, GrDownload, GrInstallOption  } from 'react-icons/gr';
 import { ConfigOptionsContext } from '../contexts/ConfigOptions';
+import { PaletteModel } from '~/enums/PaletteModel';
+import { ColorPaletteMenu } from './ColorPaletteMenu';
 
 export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     const useMenuOptions = useContext(MenuOptionsContext);
@@ -35,9 +37,11 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     const [mapFeedback] = useMapFeedback;
     const [ConfigOptions, setConfigOptions] = useConfigOptions;
     const { exportingFormat, presets, savedPalettes } = ConfigOptions;
-    const { colorModel, colorPalette, k, selectedPalette, tileDimensions, tileModel, usePalette, usePixelData } = menuOptions;
-    const { colors, bspt } = colorPalette;
+    const { colorModel, colorPalette, k, selectedPalette, tileDimensions, tileModel, paletteModel, usePixelData } = menuOptions;
     const { maxK, map } = mapFeedback;
+
+    const usePalette = paletteModel !== PaletteModel.RGBA,
+        bspt = colorPalette.reduce((prev, { bspt })=>(prev&&(!!bspt)), true);
 
     const download = async () => {
         const canvas:HTMLCanvasElement = document.createElement('canvas');
@@ -95,7 +99,8 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     };
     const savePalette = () =>{
         const name = prompt('Palette name:')||'new palette';
-        setConfigOptions({ ...ConfigOptions, selectedPalette: savedPalettes.length, savedPalettes: [...savedPalettes, { ...colorPalette, name }] });
+        setConfigOptions({ ...ConfigOptions, savedPalettes: [...savedPalettes, { name, paletteModel, colorPalette }] });
+        setMenuOptions({ ...menuOptions, selectedPalette: savedPalettes.length });
         setIsEditingPalette(false);
     };
     const savePreset = () =>{
@@ -106,9 +111,9 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     const compress = () => {
         if (map&&window.Worker && map.tiles) {
             const { id, tiles } = map;
-            const chain:Task[] = addId(createFilterChain(colorLab(CDT(createCompressChain(), tileModel, usePixelData), colorModel, usePixelData), usePalette), id);
+            const chain:Task[] = addId(createFilterChain(colorLab(CDT(createCompressChain(), tileModel, usePixelData), colorModel, usePixelData), paletteModel), id);
             const nextTask = chain[0];
-            const props = { tiles: serializeTiles(tiles), colorModel, tileModel, k, bspt, colors };
+            const props = { tiles: serializeTiles(tiles), colorModel, tileModel, k, colorPalette, paletteModel };
             nextTask.props = props;
             dispatchTasksAction({ type: 'task/add', payload: { id, chain } });
         }
@@ -118,9 +123,9 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
             for (let i = 0; i < files.length; i++) {
                 const { id, tiles } = files[i];
                 if(tiles){
-                    const chain:Task[] = addId(createFilterChain(colorLab(CDT(createCompressChain(), tileModel, usePixelData), colorModel, usePixelData), usePalette), id);
+                    const chain:Task[] = addId(createFilterChain(colorLab(CDT(createCompressChain(), tileModel, usePixelData), colorModel, usePixelData), paletteModel), id);
                     const nextTask = chain[0];
-                    const props = { tiles: serializeTiles(tiles), colorModel, tileModel, k, bspt, colors };
+                    const props = { tiles: serializeTiles(tiles), colorModel, tileModel, k, colorPalette, paletteModel };
                     nextTask.props = props;
                     dispatchTasksAction({ type: 'task/add', payload: { id, chain } });
                 }
@@ -141,14 +146,14 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                 if(tiles){
                     const serializedTiles = serializeTiles(tiles);
                     dispatchTasksAction({ type: 'task/add', payload: { id: GLOBAL_TASK_ID, chain: [
-                        { id: GLOBAL_TASK_ID, action: TaskTypes.getColors, progress: 0, props: { tiles: serializedTiles, k: 0, colorModel, tileModel, colors: [] } },
-                        { id: GLOBAL_TASK_ID, action: TaskTypes.generateBSPT, progress: 0, props: { tiles: serializedTiles, k: 0, colorModel, tileModel, colors: [] } }
+                        { id: GLOBAL_TASK_ID, action: TaskTypes.getColors, progress: 0, props: { tiles: serializedTiles, k: 0, colorModel, tileModel, paletteModel, colorPalette } },
+                        { id: GLOBAL_TASK_ID, action: TaskTypes.generateBSPT, progress: 0, props: { tiles: serializedTiles, k: 0, colorModel, tileModel, paletteModel, colorPalette } }
                     ] } });
                 }
             }
         }
         else{
-            setMenuOptions({ ...menuOptions, colorPalette: { ...savedPalettes[selectedPalette] } });
+            setMenuOptions({ ...menuOptions, colorPalette: { ...savedPalettes[selectedPalette].colorPalette } });
         }
     }, [selectedPalette, map?.image]);
     const applyPreset =() => {
@@ -160,12 +165,12 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     useEffect(()=>{
         if(isEditingPalette&&(selectedPalette==-1)){
             const id = setTimeout(()=>dispatchTasksAction({ type: 'task/add', payload: { id: GLOBAL_TASK_ID, chain: [
-                { id: GLOBAL_TASK_ID, action: TaskTypes.generateBSPT, progress: 0, props: { tiles: [], k: 0, colorModel, tileModel, colors } }
+                { id: GLOBAL_TASK_ID, action: TaskTypes.generateBSPT, progress: 0, props: { tiles: [], k: 0, colorModel, tileModel, paletteModel, colorPalette } }
             ] } }), 3000);
             return ()=>clearTimeout(id);
         }
     },
-    [colors]);
+    [colorPalette]);
     const editPalette = ()=>{
         setIsEditingPalette(true);
         setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette } });
@@ -217,12 +222,17 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                     </div>
                 </label>
                 <label>
-                    <input
-                        type="checkbox"
-                        checked={usePalette}
-                        onChange={(e) => setMenuOptions({ ...menuOptions, usePalette: e.target.checked })}
-                        className='rounded-md border-0 mx-1.5 shadow-sm ring-1 ring-inset ring-primary-200 focus:ring-2 focus:ring-inset focus:ring-primary-300 sm:text-sm sm:leading-6 accent-primary-300' />
-                    Enforce palette
+                    palette model
+                    <select
+                        className='bg-primary-50 rounded-md border-0 shadow-sm ring-1 ring-inset ring-primary-200 focus:ring-2 focus:ring-inset sm:text-sm disabled:text-primary-200 px-2'
+                        value={colorModel}
+                        onChange={e => setMenuOptions({ ...menuOptions, paletteModel: e.target.value as never })}
+                    >
+                        {Object.values(PaletteModel)
+                            .filter(v => typeof v === 'number')
+                            .map((key) => <option key={key} value={key}>{ColorModel[key as PaletteModel]}</option>
+                            )}
+                    </select>
                 </label>
                 <span
                     className="block text-sm font-medium leading-6"
@@ -281,37 +291,15 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                             <GrEdit />
                         </button>}
                 </div>
-                <div className='flex-1 overflow-auto min-h-6 h-[calc(100vh-35rem)]'>
-                    <div className={`flex flex-wrap ${isEditingPalette&&'gap-2 p-1'}`}>
-                        {colorPalette.colors.map((color, i) => <div
-                            key={`color-${i}`}
-                            className={`flex relative group ${isEditingPalette?'w-4 h-4':'w-6 h-6'}`}
-                            style={{ backgroundImage: 'linear-gradient(to right, black 50%, white 50%), linear-gradient(to bottom, black 50%, white 50%)', backgroundSize: '8px 8px', backgroundBlendMode: 'difference, normal' }}
-                        >
-                            {isEditingPalette&&<button
-                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                onClick={e => setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: colorPalette.colors.filter((x, j) => i != j) } })}
-                                className='absolute bg-primary-100 bg-primary-50 w-4 h-4 top-[-10px] right-[-10px] z-10 invisible group-hover:visible flex star border-2 border-primary-200 justify-center'
-                            ><GrClose /></button>}
-                            <div className='absolute w-full h-full' style={{ height: '100%', background: `rgb(${color.slice(0, 3).toString()})`, opacity: color[3]/255 }}></div>
-                            <input
-                                type="color"
-                                value={`#${color
-                                    .slice(0, 3)
-                                    .map(x => `0${x.toString(16)}`.slice(-2))
-                                    .join('')}`}
-                                onChange={(e) => setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: colorPalette.colors.map((x, j) => (i == j) ? [...e.target.value.match(/[a-f0-9]{2}/gi)?.map((v) => parseInt(v, 16)) || [], 255] as never : x) } })}
-                                className='opacity-0'
-                                disabled={!isEditingPalette}
-                            />
-                        </div>)}
-                        {isEditingPalette&&<button
-                            onClick={() => { setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: [...colorPalette.colors, [0, 0, 0, 255]] } }); }}
-                            disabled={(colorPalette.colors.length >= 255)}
-                            className='bg-primary-50 disabled:text-primary-200 flex relative w-6 h-6 border-2 border-primary-200 text-center justify-center'
-                        ><GrAdd /></button>}
-                    </div>
-                </div>
+                {colorPalette.map((palette, i)=><ColorPaletteMenu
+                    key={`color-palette-${i}`}
+                    colorPalette={palette}
+                    onChangeColorPalette={(p)=>{
+                        setMenuOptions({
+                            ...menuOptions,
+                            colorPalette: colorPalette.map((palette, j)=>((i==j)?p:palette))
+                        }); }}
+                    isEditingPalette={isEditingPalette} ></ColorPaletteMenu>)}
                 <button
                     onClick={compress}
                     className="rounded-md bg-primary-300 disabled:bg-primary-400 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300 mt-3 mb-1"
@@ -474,3 +462,4 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
         </Tab>
     </Tabs>;
 };
+

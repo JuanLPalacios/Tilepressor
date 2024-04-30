@@ -26,6 +26,7 @@ export type AbstractionOptions = {
 
 export type SavedColorPalette = {
     name:string,
+    paletteModel:PaletteModel,
     colorPalette:ColorPalette[]
 }
 

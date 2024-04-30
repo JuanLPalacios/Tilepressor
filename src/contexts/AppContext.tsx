@@ -46,15 +46,16 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
                     colorPalette: [{
                         'colors': [[48, 104, 80, 255], [134, 192, 108, 255], [224, 248, 207, 255], [7, 24, 33, 255]],
                         'bspt': { 'divider': [[48, 104, 80, 255], [134, 192, 108, 255]], 'front': [48, 104, 80, 255], 'back': [134, 192, 108, 255], 'inFront': { 'divider': [[48, 104, 80, 255], [7, 24, 33, 255]], 'front': [48, 104, 80, 255], 'back': [7, 24, 33, 255], 'inFront': null, 'inBack': null }, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } }
-
-                    }]
+                    }],
+                    paletteModel: PaletteModel.Indexed
                 },
                 {
                     'name': 'GB studio sprite',
                     colorPalette: [{
                         'colors': [[101, 255, 0, 255], [7, 24, 33, 255], [134, 192, 108, 255], [224, 248, 207, 255]],
                         'bspt': { 'divider': [[101, 255, 0, 255], [134, 192, 108, 255]], 'front': [101, 255, 0, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[7, 24, 33, 255], [134, 192, 108, 255]], 'front': [7, 24, 33, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } }
-                    }]
+                    }],
+                    paletteModel: PaletteModel.Indexed
                 }
             ],
             useGrid: false,
