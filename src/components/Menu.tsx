@@ -4,7 +4,7 @@ import { Tab } from './Tab';
 import { TileModel } from '../enums/TileModel';
 import { ColorModel } from '../enums/ColorModel';
 import { useContext, useEffect, useState } from 'react';
-import { MenuOptionsContext } from '../contexts/MenuOptions';
+import { MenuOptionsContext, convertToCurrent } from '../contexts/MenuOptions';
 import { MapFeedbackContext } from '../contexts/MapFeedback';
 import { TasksContext } from '../contexts/TasksState';
 import { saveAs } from 'file-saver';
@@ -153,13 +153,13 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
             }
         }
         else{
-            setMenuOptions({ ...menuOptions, colorPalette: { ...savedPalettes[selectedPalette].colorPalette } });
+            setMenuOptions({ ...menuOptions, colorPalette: [...savedPalettes[selectedPalette].colorPalette] });
         }
     }, [selectedPalette, map?.image]);
     const applyPreset =() => {
         if(selectedPreset!=-1){
             setSelectedPreset(-1);
-            setMenuOptions({ ...presets[selectedPreset].options });
+            setMenuOptions(convertToCurrent({ ...presets[selectedPreset].options }));
         }
     };
     useEffect(()=>{
@@ -230,7 +230,7 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                     >
                         {Object.values(PaletteModel)
                             .filter(v => typeof v === 'number')
-                            .map((key) => <option key={key} value={key}>{ColorModel[key as PaletteModel]}</option>
+                            .map((key) => <option key={key} value={key}>{PaletteModel[key as PaletteModel]}</option>
                             )}
                     </select>
                 </label>
