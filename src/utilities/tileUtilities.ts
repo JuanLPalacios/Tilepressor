@@ -52,7 +52,8 @@ export function changeTileColorSpace({ data, raw, instances }: SerializableTile,
     }
 
     return { data: newData, instances, raw };
-}export function kMeansPlusPlus<T>(tiles: T[], k: number, distanceFunc: DistanceFunction<T>, addCentroid: CentroidFunction<T>, update?: (progess: number) => void): T[] {
+}
+export function kMeansPlusPlus<T>(tiles: T[], k: number, distanceFunc: DistanceFunction<T>, addCentroid: CentroidFunction<T>, update?: (progess: number) => void): T[] {
     if (tiles.length == 0) return tiles;
     if (tiles.length <= k) return tiles;
     //choose a random C tile

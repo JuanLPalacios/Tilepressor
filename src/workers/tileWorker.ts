@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { mapColors } from '../utilities/tileUtilities';
-import { bspNode, calculateDivider, generateBsptFromPoints, isFront } from '../utilities/bsp';
+import { bspNode, calculateDivider, findBsptClosest, generateBsptFromPoints, isFront } from '../utilities/bsp';
 import { indexColors, kMeansPlusPlus, euclideanDistance, pixelPermutedDifferenceDistance, addCentroid } from '../utilities/tileUtilities';
 import { addColor } from '../utilities/colorUtilities';
 import { dct2pixels } from '../utilities/dctUtilities';
@@ -17,6 +17,7 @@ import { TaskTypes } from '../enums/TaskType';
 import { hashTiles } from '../utilities/hashUtilities';
 import { PaletteModel } from '~/enums/PaletteModel';
 import { ColorPalette } from '~/contexts/MenuOptions';
+import { CentroidFunction } from '~/types/CentroidFunction';
 
 declare const self: {
     postMessage(message: WorkerResponse, options?: WindowPostMessageOptions): void;
@@ -61,17 +62,41 @@ self.onmessage = (e: CompressorMessageEvent) => {
 export {};
 
 const getColorsCash:{[key:string]:ColorPalette[]} = {};
-async function getColorsWrapper({ props: { tiles, paletteModel }, id }:CompressorMessageData&{id:string|number}): Promise<void> {
+export const paletteDistance = (a: { colors: Color[]; bspt: bspNode<Color> } & SerializableTile, b: { colors: Color[]; bspt: bspNode<Color> } & SerializableTile): number => {
+    return a.colors.reduce((prev, colorA)=>prev+euclideanDistance(colorA, findBsptClosest(colorA, b.bspt, isFront)), 0);
+};
+
+export const addPaletteCentroid:CentroidFunction<{ colors: Color[]; bspt: bspNode<Color> } & SerializableTile> = (a, b) => {
+    if (!a) return b;
+    if (!b) return a;
+    return { data: Array.from(a.data), instances: [], raw: [...a.raw], colors: kMeansPlusPlus([...a.colors, ...b.colors], Math.max(a.colors.length, b.colors.length), euclideanDistance, addColor), bspt: a.bspt };
+};
+async function getColorsWrapper({ props: { tiles, paletteModel, colorModel }, id }:CompressorMessageData&{id:string|number}): Promise<void> {
     const key = (await hashTiles(tiles))+'';
     const cash = getColorsCash[key];
     if(cash) return self.postMessage({ id, action: TaskTypes.getColors, data: { colorPalette: cash }, progress: 1 });
     let groups:SerializableTile[][] = [tiles];
     if(paletteModel==PaletteModel.GBC) groups = tiles.map(tile =>[tile]);
-    const colorPalette = groups.map((tiles, i)=>{
+    let colorPalette = groups.map((tiles, i)=>{
         let colors = indexColors(tiles);
-        colors = kMeansPlusPlus(colors, 256, euclideanDistance, addColor, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.getColors, data: { }, progress: progress }); });
+        colors = kMeansPlusPlus(colors, (paletteModel==PaletteModel.GBC)?4:256, euclideanDistance, addColor, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.getColors, data: { }, progress: progress }); });
         return { colors };
     });
+    if(paletteModel==PaletteModel.GBC){
+        const tilePair = colorPalette.map(({ colors }, j)=> {
+            if(colorModel == ColorModel.Lab){
+                const labColors = [];
+                for (let i = 0; i < colors.length; i += 1) {
+                    labColors.push(...rgb2lab(colors[i]));
+                }
+                colors = labColors;
+            }
+            const bspt = generateBsptFromPoints(Object.values(colors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront, (progress)=>(progress!=1)&&self.postMessage({ id, action: TaskTypes.generateBSPT, data: { }, progress: j/colorPalette.length + progress/colorPalette.length }));
+            return { ...tiles[j], colors, bspt };
+        });
+        tiles.map((tile, i)=>({ tile,  }));
+        colorPalette = kMeansPlusPlus(tilePair, 8, paletteDistance, addPaletteCentroid, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.getColors, data: { }, progress: progress }); });
+    }
     getColorsCash[key] = colorPalette;
     self.postMessage({ id, action: TaskTypes.getColors, data: { colorPalette }, progress: 1 });
 }

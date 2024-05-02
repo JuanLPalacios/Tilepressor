@@ -7,5 +7,5 @@ export enum TaskTypes {
     applyFilter,
     generateBSPT,
     cleanCache,
-    getColors
+    getColors,
 }
