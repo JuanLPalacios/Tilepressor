@@ -19,6 +19,24 @@ import { PaletteModel } from '~/enums/PaletteModel';
 import { ColorPalette } from '~/contexts/MenuOptions';
 import { CentroidFunction } from '~/types/CentroidFunction';
 
+type PaletteCentroid = {
+    colors: ColorCentroid[]
+    bspt: bspNode<Color>
+    instances: {
+        [key:string]:{
+            color: Color
+            instances:number
+        }
+    }
+};
+type ColorCentroid = {
+    color: Color
+    instances: {
+        color: Color
+        instances:number
+    }[]
+};
+
 declare const self: {
     postMessage(message: WorkerResponse, options?: WindowPostMessageOptions): void;
  } & Omit<Window, 'postMessage'>;
@@ -62,14 +80,32 @@ self.onmessage = (e: CompressorMessageEvent) => {
 export {};
 
 const getColorsCash:{[key:string]:ColorPalette[]} = {};
-export const paletteDistance = (a: { colors: Color[]; bspt: bspNode<Color> } & SerializableTile, b: { colors: Color[]; bspt: bspNode<Color> } & SerializableTile): number => {
-    return a.colors.reduce((prev, colorA)=>prev+euclideanDistance(colorA, findBsptClosest(colorA, b.bspt, isFront)), 0);
+export const paletteDistance = (a: PaletteCentroid, b: PaletteCentroid): number => {
+    return Math.min(a.colors.reduce((prev, colorA)=>prev+euclideanDistance(colorA.color, findBsptClosest(colorA.color, b.bspt, isFront))*colorA.instances.reduce((t, ins)=>t+ins.instances, 0), 0), b.colors.reduce((prev, colorA)=>prev+euclideanDistance(colorA.color, findBsptClosest(colorA.color, a.bspt, isFront))*colorA.instances.reduce((t, ins)=>t+ins.instances, 0), 0));
 };
 
-export const addPaletteCentroid:CentroidFunction<{ colors: Color[]; bspt: bspNode<Color> } & SerializableTile> = (a, b) => {
+export const addPaletteCentroid:CentroidFunction<PaletteCentroid> = (a, b) => {
     if (!a) return b;
     if (!b) return a;
-    return { data: Array.from(a.data), instances: [], raw: [...a.raw], colors: kMeansPlusPlus([...a.colors, ...b.colors], Math.max(a.colors.length, b.colors.length), euclideanDistance, addColor), bspt: a.bspt };
+    const colors = kMeansPlusPlus([...a.colors, ...b.colors], 4, (colA, colB)=>euclideanDistance(colA.color, colB.color), addColorCentroid);
+    const colMap:{[key:string]:number} = {};
+    colors.forEach((col, i) =>{
+        colMap[col.color.toString()] = i;
+    });
+    const bspt = generateBsptFromPoints(Object.values(colors.map(x=>x.color).reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront);
+    const instances:{[key:string]:{color: Color, instances:number}} = {};
+    colors.forEach(col=>{ col.instances = []; });
+    [...Object.values(a.instances), ...Object.values(b.instances)].forEach(instance=>{
+        const key = instance.color.toString();
+        instance.instances += instances[key]?.instances || 0;
+        instances[key] = instance;
+    });
+    Object.values(instances).forEach(instance=>{
+        const closest = findBsptClosest(instance.color, bspt, isFront);
+        colors[colMap[closest.toString()]].instances.push(instance);
+    });
+    instances;
+    return { colors, bspt, instances };
 };
 async function getColorsWrapper({ props: { tiles, paletteModel, colorModel }, id }:CompressorMessageData&{id:string|number}): Promise<void> {
     const key = (await hashTiles(tiles))+'';
@@ -77,25 +113,40 @@ async function getColorsWrapper({ props: { tiles, paletteModel, colorModel }, id
     if(cash) return self.postMessage({ id, action: TaskTypes.getColors, data: { colorPalette: cash }, progress: 1 });
     let groups:SerializableTile[][] = [tiles];
     if(paletteModel==PaletteModel.GBC) groups = tiles.map(tile =>[tile]);
-    let colorPalette = groups.map((tiles, i)=>{
+    let colorPalette:ColorPalette[] = groups.map((tiles, i)=>{
         let colors = indexColors(tiles);
         colors = kMeansPlusPlus(colors, (paletteModel==PaletteModel.GBC)?4:256, euclideanDistance, addColor, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.getColors, data: { }, progress: progress }); });
         return { colors };
     });
     if(paletteModel==PaletteModel.GBC){
-        const tilePair = colorPalette.map(({ colors }, j)=> {
+        const tilePair:PaletteCentroid[] = colorPalette.map(({ colors: oColors }, j)=> {
+            const tile = tiles[j];
+            const instances:{
+                [key:string]:{
+                    color: Color
+                    instances:number
+                }
+            } = {};
             if(colorModel == ColorModel.Lab){
                 const labColors = [];
-                for (let i = 0; i < colors.length; i += 1) {
-                    labColors.push(...rgb2lab(colors[i]));
+                for (let i = 0; i < oColors.length; i += 1) {
+                    labColors.push(...rgb2lab(oColors[i]));
                 }
-                colors = labColors;
+                oColors = labColors;
             }
-            const bspt = generateBsptFromPoints(Object.values(colors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront, (progress)=>(progress!=1)&&self.postMessage({ id, action: TaskTypes.generateBSPT, data: { }, progress: j/colorPalette.length + progress/colorPalette.length }));
-            return { ...tiles[j], colors, bspt };
+            const colors = oColors.map(color=>{
+                const key = color.toString();
+                const instances:{
+                    color: Color
+                    instances:number
+                }[] = [];
+                return { color, instances };
+            });
+            const bspt = generateBsptFromPoints(Object.values(oColors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront, (progress)=>(progress!=1)&&self.postMessage({ id, action: TaskTypes.generateBSPT, data: { }, progress: j/colorPalette.length + progress/colorPalette.length }));
+            return { colors, bspt, instances };
         });
         tiles.map((tile, i)=>({ tile,  }));
-        colorPalette = kMeansPlusPlus(tilePair, 8, paletteDistance, addPaletteCentroid, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.getColors, data: { }, progress: progress }); });
+        colorPalette = kMeansPlusPlus(tilePair, 8, paletteDistance, addPaletteCentroid, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.getColors, data: { }, progress: progress }); }).map(({ colors, bspt })=>({ colors: colors.map(x=>x.color), bspt }));
     }
     getColorsCash[key] = colorPalette;
     self.postMessage({ id, action: TaskTypes.getColors, data: { colorPalette }, progress: 1 });
@@ -189,5 +240,14 @@ function getModelFunctions(colorModel: ColorModel, tileModel: TileModel) {
             [TileModel.Raster]: pixelPermutedDifferenceDistance,
         }[tileModel]
     };
+}
+
+function addColorCentroid(colA: ColorCentroid, colB: ColorCentroid): ColorCentroid {
+    if (!colA) return colB;
+    if (!colB) return colA;
+    const aInst = Object.values(colA.instances).reduce((total, inst)=>total+inst.instances, 0);
+    const bInst = Object.values(colB.instances).reduce((total, inst)=>total+inst.instances, 0);
+    const total = aInst+bInst;
+    return { color: colA.color.map((v, i)=>(v*aInst+colB.color[i]*bInst)/total) as Color, instances: { ...colA.instances, ...colB.instances } };
 }
 
