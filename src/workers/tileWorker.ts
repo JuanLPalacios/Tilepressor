@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { mapColors } from '../utilities/tileUtilities';
 import { bspNode, calculateDivider, findBsptClosest, generateBsptFromPoints, isFront } from '../utilities/bsp';
 import { indexColors, kMeansPlusPlus, euclideanDistance, pixelPermutedDifferenceDistance, addCentroid } from '../utilities/tileUtilities';
@@ -134,12 +133,21 @@ async function getColorsWrapper({ props: { tiles, paletteModel, colorModel }, id
                 }
                 oColors = labColors;
             }
+            for (let i = 0; i < tile.data.length; i+=4) {
+                const color:Color = <Color> tile.data.slice(i, i+4);
+                const key =color.toString();
+                let instance = instances[key];
+                if(!instance) instance = { color, instances: 0 };
+                instance.instances +=1;
+                instances[key] = instance;
+            }
+            const closestColor = oColors.map((color)=>findBsptClosest(color, bspt, isFront));
+            const instancesEsc = instances;
             const colors = oColors.map(color=>{
-                const key = color.toString();
                 const instances:{
                     color: Color
                     instances:number
-                }[] = [];
+                }[] = Object.values(instancesEsc).filter((ins, i)=>closestColor[i] === color);
                 return { color, instances };
             });
             const bspt = generateBsptFromPoints(Object.values(oColors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront, (progress)=>(progress!=1)&&self.postMessage({ id, action: TaskTypes.generateBSPT, data: { }, progress: j/colorPalette.length + progress/colorPalette.length }));
