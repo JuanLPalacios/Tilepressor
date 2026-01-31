@@ -11,11 +11,16 @@ export interface TileWorker extends Omit<Worker, 'postMessage'> {
 
 export type WorkerData = {
     k: number;
+    paletteCount?: number;
+    paletteSize?: number;
     colorModel: ColorModel;
     tileModel: TileModel;
     tiles: SerializableTile[];
     colors: Color[];
     bspt?: bspNode<Color>;
+    palettes?: Color[][];
+    paletteBspts?: bspNode<Color>[];
+    paletteIndexes?: number[];
 };
 
 export type CompressorMessageData = {
