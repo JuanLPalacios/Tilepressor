@@ -15,6 +15,9 @@ export type CompressionOptions = {
     usePixelData: boolean
     selectedPalette: number,
     usePalette: boolean,
+    usePaletteFilter: boolean,
+    paletteCount: number,
+    paletteSize: number,
     colorPalette: ColorPalette
 };
 
