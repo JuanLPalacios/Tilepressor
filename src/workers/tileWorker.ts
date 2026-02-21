@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { mapColors } from '../utilities/tileUtilities';
+import { mapColors, clusterPalettesFromTiles, tilePaletteDistance, mapColorsToPalette, mapColor2SingleColor } from '../utilities/tileUtilities';
 import { calculateDivider, generateBsptFromPoints, isFront } from '../utilities/bsp';
 import { indexColors, kMeansPlusPlus, euclideanDistance, pixelPermutedDifferenceDistance, addCentroid } from '../utilities/tileUtilities';
 import { addColor } from '../utilities/colorUtilities';
@@ -25,8 +25,14 @@ self.onmessage = (e: CompressorMessageEvent) => {
     case TaskTypes.applyFilter:
         return applyFilterWrapper(e.data);
         break;
+    case TaskTypes.applyPaletteFilter:
+        return applyPaletteFilterWrapper(e.data);
+        break;
     case TaskTypes.kMeansPlusPlus:
         return kMeansPlusPlusWrapper(e.data);
+        break;
+    case TaskTypes.clusterPalettes:
+        return clusterPalettesWrapper(e.data);
         break;
     case TaskTypes.pixels2dct:
         return pixels2dctWrapper(e.data);
@@ -119,12 +125,67 @@ function lab2rgbWrapper({ props: { tiles }, id }:CompressorMessageData&{id:strin
     self.postMessage({ id, action: TaskTypes.lab2rgb, data: { tiles }, progress: 1 });
 }
 
-function applyFilterWrapper({ props: { tiles, bspt }, id }:CompressorMessageData&{id:string|number}): void {
+function applyFilterWrapper({ props: { tiles, bspt, paletteBspts, paletteIndexes }, id }:CompressorMessageData&{id:string|number}): void {
     tiles.forEach((tile, i)=>{
-        mapColors(tile, bspt||null);
+        const paletteIndex = paletteIndexes?.[i];
+        const paletteBspt = (paletteIndex !== undefined && paletteBspts)? paletteBspts[paletteIndex] : undefined;
+        mapColors(tile, paletteBspt || bspt || null);
+        tile.data = Array.from(tile.raw);
         self.postMessage({ id, action: TaskTypes.applyFilter, data: { }, progress: (i/tiles.length) });
     });
     self.postMessage({ id, action: TaskTypes.applyFilter, data: { tiles }, progress: 1 });
+}
+
+function applyPaletteFilterWrapper({ props: { tiles, palettes, paletteBspts }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('applyPaletteFilterWrapper called with tiles:', tiles, 'palettes:', palettes);
+    tiles.forEach((tile, i)=>{
+        if (palettes && palettes.length) {
+            let bestIndex = 0;
+            let bestDistance = Number.MAX_VALUE;
+            for (let j = 0; j < palettes.length; j++) {
+                const distance = tilePaletteDistance(tile, palettes[j]);
+                if (distance < bestDistance) {
+                    bestDistance = distance;
+                    bestIndex = j;
+                }
+            }
+            const paletteBspt = paletteBspts?.[bestIndex];
+            if (paletteBspt) {
+                mapColors(tile, paletteBspt);
+            }
+            else if (palettes[bestIndex]?.length === 1) {
+                mapColor2SingleColor(tile, palettes[bestIndex]);
+            }
+            else if (palettes[bestIndex]?.length) {
+                mapColorsToPalette(tile, palettes[bestIndex]);
+            }
+            tile.data = Array.from(tile.raw);
+        }
+        self.postMessage({ id, action: TaskTypes.applyPaletteFilter, data: { }, progress: (i/tiles.length) });
+    });
+    self.postMessage({ id, action: TaskTypes.applyPaletteFilter, data: { tiles }, progress: 1 });
+}
+
+function clusterPalettesWrapper({ props: { tiles, paletteCount, paletteSize }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('clusterPalettesWrapper called with paletteCount:', paletteCount, 'paletteSize:', paletteSize);
+    const { palettes, paletteIndexes } = clusterPalettesFromTiles(
+        tiles,
+        paletteCount || 1,
+        paletteSize || 256,
+        (progress: number)=>{
+            if (progress < 1) {
+                self.postMessage({ id, action: TaskTypes.clusterPalettes, data: { }, progress: progress });
+            }
+        }
+    );
+    console.log('clusterPalettesFromTiles returned', palettes, paletteIndexes);
+    const paletteBspts = palettes.map((colors, index)=>{
+        const unique = Object.values(colors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color}));
+        return generateBsptFromPoints(unique, calculateDivider, isFront, (progress)=>{
+            if(progress != 1) self.postMessage({ id, action: TaskTypes.clusterPalettes, data: { }, progress: (index + progress) / palettes.length });
+        });
+    });
+    self.postMessage({ id, action: TaskTypes.clusterPalettes, data: { palettes, paletteIndexes, paletteBspts }, progress: 1 });
 }
 function generateBSPTWrapper({ props: { colors }, id }:CompressorMessageData&{id:string|number}): void {
     const bspt = generateBsptFromPoints(Object.values(colors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront, (progress)=>(progress!=1)&&self.postMessage({ id, action: TaskTypes.generateBSPT, data: { }, progress }));
