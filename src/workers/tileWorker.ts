@@ -49,6 +49,12 @@ self.onmessage = (e: CompressorMessageEvent) => {
     case TaskTypes.rgb2lab:
         return rgb2labWrapper(e.data);
         break;
+    case TaskTypes.lab2cgbIndex:
+        return lab2cgbIndexWrapper(e.data);
+        break;
+    case TaskTypes.cgbIndex2lab:
+        return cgbIndex2labWrapper(e.data);
+        break;
     case TaskTypes.cleanCache:
         return cleanCacheWrapper();
         break;
@@ -123,6 +129,69 @@ function lab2rgbWrapper({ props: { tiles }, id }:CompressorMessageData&{id:strin
         tile.data = changeTileColorSpace(tile, lab2rgb).data;
     });
     self.postMessage({ id, action: TaskTypes.lab2rgb, data: { tiles }, progress: 1 });
+}
+
+function lab2cgbIndexWrapper({ props: { tiles, palettes, paletteIndexes }, id }:CompressorMessageData&{id:string|number}): void {
+    const paletteLabCache: { [key: number]: number[][] } = {};
+    tiles.forEach((tile, i)=>{
+        if(i%10==0)self.postMessage({ id, action: TaskTypes.lab2cgbIndex, data: { }, progress: i/tiles.length });
+        const paletteIndex = paletteIndexes?.[i] ?? 0;
+        let paletteLab = paletteLabCache[paletteIndex];
+        if (!paletteLab) {
+            const palette = palettes?.[paletteIndex] ?? [];
+            paletteLab = palette.slice(0, 4).map(([r, g, b]) => rgb2lab([r, g, b]));
+            paletteLabCache[paletteIndex] = paletteLab;
+        }
+        const newData: number[] = [];
+        for (let p = 0; p < tile.data.length; p += 4) {
+            const alpha = tile.data[p + 3];
+            if (alpha === 0) {
+                newData.push(0, 0, 0, 0);
+                continue;
+            }
+            const lab = tile.data.slice(p, p + 3);
+            newData.push(
+                paletteLab[0] ? euclideanDistance(lab, paletteLab[0]) : 0,
+                paletteLab[1] ? euclideanDistance(lab, paletteLab[1]) : 0,
+                paletteLab[2] ? euclideanDistance(lab, paletteLab[2]) : 0,
+                paletteLab[3] ? euclideanDistance(lab, paletteLab[3]) : 0
+            );
+        }
+        tile.data = newData;
+    });
+    self.postMessage({ id, action: TaskTypes.lab2cgbIndex, data: { tiles }, progress: 1 });
+}
+
+function cgbIndex2labWrapper({ props: { tiles, palettes, paletteIndexes }, id }:CompressorMessageData&{id:string|number}): void {
+    const paletteLabCache: { [key: number]: number[][] } = {};
+    tiles.forEach((tile, i)=>{
+        if(i%10==0)self.postMessage({ id, action: TaskTypes.cgbIndex2lab, data: { }, progress: i/tiles.length });
+        const paletteIndex = paletteIndexes?.[i] ?? 0;
+        let paletteLab = paletteLabCache[paletteIndex];
+        if (!paletteLab) {
+            const palette = palettes?.[paletteIndex] ?? [];
+            paletteLab = palette.slice(0, 4).map(([r, g, b]) => rgb2lab([r, g, b]));
+            paletteLabCache[paletteIndex] = paletteLab;
+        }
+
+        const newData: number[] = [];
+        for (let p = 0; p < tile.data.length; p += 4) {
+            const v0 = tile.data[p];
+            const v1 = tile.data[p + 1];
+            const v2 = tile.data[p + 2];
+            const v3 = tile.data[p + 3];
+            let maxIndex = 0;
+            let maxValue = v0;
+            if (v1 > maxValue) { maxValue = v1; maxIndex = 1; }
+            if (v2 > maxValue) { maxValue = v2; maxIndex = 2; }
+            if (v3 > maxValue) { maxValue = v3; maxIndex = 3; }
+
+            const lab = paletteLab[maxIndex] ?? [0, 0, 0, 0];
+            newData.push(lab[0], lab[1], lab[2], lab[3]);
+        }
+        tile.data = newData;
+    });
+    self.postMessage({ id, action: TaskTypes.cgbIndex2lab, data: { tiles }, progress: 1 });
 }
 
 function applyFilterWrapper({ props: { tiles, bspt, paletteBspts, paletteIndexes }, id }:CompressorMessageData&{id:string|number}): void {
