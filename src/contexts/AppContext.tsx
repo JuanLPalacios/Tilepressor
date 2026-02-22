@@ -22,8 +22,7 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
     const useTasks = useReducer(tasksReducer(tileWorker), { });
     const useFiles = useReducer(filesReducer, []);
     const useMenuOptions = useState<MenuOptions>(():MenuOptions=>{
-        const value = window.localStorage.getItem(MENU_OPTIONS_STORAGE_KEY);
-        if(!value) return {
+        const defaults: MenuOptions = {
             colorModel: ColorModel.Lab,
             colorPalette: { colors: [] },
             k: 0,
@@ -31,9 +30,15 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
             tileDimensions: 8,
             tileModel: TileModel.CDT,
             usePalette: false,
-            usePixelData: true
+            usePixelData: true,
+            usePaletteFilter: false,
+            paletteCount: 1,
+            paletteSize: 256
         };
-        return JSON.parse(value);
+        const value = window.localStorage.getItem(MENU_OPTIONS_STORAGE_KEY);
+        if(!value) return defaults;
+        const parsed = JSON.parse(value) as Partial<MenuOptions>;
+        return { ...defaults, ...parsed, colorPalette: { ...defaults.colorPalette, ...parsed.colorPalette } } as MenuOptions;
     });
     const useConfigOptions = useState<ConfigOptions>(():ConfigOptions=>{
         const value = window.localStorage.getItem(CONFIG_OPTIONS_STORAGE_KEY);
@@ -55,11 +60,11 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
             presets: [
                 {
                     'name': 'GB studio bg',
-                    'options': { 'colorModel': 1, 'colorPalette': { 'colors': [[48, 104, 80, 255], [134, 192, 108, 255], [224, 248, 207, 255], [7, 24, 33, 255]], 'bspt': { 'divider': [[48, 104, 80, 255], [134, 192, 108, 255]], 'front': [48, 104, 80, 255], 'back': [134, 192, 108, 255], 'inFront': { 'divider': [[48, 104, 80, 255], [7, 24, 33, 255]], 'front': [48, 104, 80, 255], 'back': [7, 24, 33, 255], 'inFront': null, 'inBack': null }, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } }, 'k': 192, 'selectedPalette': 0, 'tileDimensions': 8, 'tileModel': 1, 'usePalette': true, 'usePixelData': true }
+                    'options': { 'colorModel': 1, 'colorPalette': { 'colors': [[48, 104, 80, 255], [134, 192, 108, 255], [224, 248, 207, 255], [7, 24, 33, 255]], 'bspt': { 'divider': [[48, 104, 80, 255], [134, 192, 108, 255]], 'front': [48, 104, 80, 255], 'back': [134, 192, 108, 255], 'inFront': { 'divider': [[48, 104, 80, 255], [7, 24, 33, 255]], 'front': [48, 104, 80, 255], 'back': [7, 24, 33, 255], 'inFront': null, 'inBack': null }, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } }, 'k': 192, 'selectedPalette': 0, 'tileDimensions': 8, 'tileModel': 1, 'usePalette': true, 'usePixelData': true, 'usePaletteFilter': false, 'paletteCount': 8, 'paletteSize': 4 }
                 },
                 {
                     'name': 'GB studio sprite',
-                    'options': { 'colorModel': 1, 'colorPalette': { 'colors': [[101, 255, 0, 255], [7, 24, 33, 255], [134, 192, 108, 255], [224, 248, 207, 255]], 'bspt': { 'divider': [[101, 255, 0, 255], [134, 192, 108, 255]], 'front': [101, 255, 0, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[7, 24, 33, 255], [134, 192, 108, 255]], 'front': [7, 24, 33, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } } }, 'k': 100, 'selectedPalette': 1, 'tileDimensions': 8, 'tileModel': 1, 'usePalette': true, 'usePixelData': true }
+                    'options': { 'colorModel': 1, 'colorPalette': { 'colors': [[101, 255, 0, 255], [7, 24, 33, 255], [134, 192, 108, 255], [224, 248, 207, 255]], 'bspt': { 'divider': [[101, 255, 0, 255], [134, 192, 108, 255]], 'front': [101, 255, 0, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[7, 24, 33, 255], [134, 192, 108, 255]], 'front': [7, 24, 33, 255], 'back': [134, 192, 108, 255], 'inFront': null, 'inBack': { 'divider': [[134, 192, 108, 255], [224, 248, 207, 255]], 'front': [134, 192, 108, 255], 'back': [224, 248, 207, 255], 'inFront': null, 'inBack': null } } } }, 'k': 100, 'selectedPalette': 1, 'tileDimensions': 8, 'tileModel': 1, 'usePalette': true, 'usePixelData': true, 'usePaletteFilter': false, 'paletteCount': 8, 'paletteSize': 4 }
                 }
             ],
             saveFreq: 0
@@ -102,14 +107,19 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
     if (window.Worker) {
         tileWorker.onmessage = (e: MessageEvent<WorkerResponse>) => {
             const { id, action, progress, data } = e.data;
-            const { tiles, bspt, colors } = data;
+            const { tiles, bspt, colors, palettes, paletteBspts } = data;
             const chain = tasks[id];
             if(!chain)return;
             const i = chain.findIndex(x=>x.action == action);
             const task = chain[i];
             if(!task.props) return;
+            const wasComplete = task.progress === 1;
             task.progress = progress;
             if(progress == 1){
+                if (wasComplete) return;
+                if (action === TaskTypes.clusterPalettes && (!palettes || !paletteBspts)) {
+                    return;
+                }
                 switch (action) {
                 case TaskTypes.kMeansPlusPlus:
                     if(usePixelData)tiles?.forEach(tile => { tile.data=tile.raw; });
@@ -135,7 +145,9 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
                     dispatchTasksAction({ type: 'task/update', payload: { id, task: { ...task, progress } } });
                 }
                 else{
-                    setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, bspt: bspt||null } });
+                    if (bspt !== undefined) {
+                        setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, bspt: bspt||null } });
+                    }
                     dispatchFilesAction({ type: 'file/update', payload: { id, file: { newTiles: tiles?.map((tile)=>{
                         const tileDimensions = Math.sqrt(tile.data.length/4);
                         const newTile = { ...tile, raw: createImageData({ width: tileDimensions, height: tileDimensions }) };

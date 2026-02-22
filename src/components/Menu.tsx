@@ -35,7 +35,7 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     const [mapFeedback] = useMapFeedback;
     const [ConfigOptions, setConfigOptions] = useConfigOptions;
     const { exportingFormat, presets, savedPalettes } = ConfigOptions;
-    const { colorModel, colorPalette, k, selectedPalette, tileDimensions, tileModel, usePalette, usePixelData } = menuOptions;
+    const { colorModel, colorPalette, k, selectedPalette, tileDimensions, tileModel, usePalette, usePixelData, paletteCount, paletteSize, usePaletteFilter } = menuOptions;
     const { colors, bspt } = colorPalette;
     const { maxK, map } = mapFeedback;
 
@@ -106,9 +106,13 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     const compress = () => {
         if (map&&window.Worker && map.tiles) {
             const { id, tiles } = map;
-            const chain:Task[] = addId(createFilterChain(colorLab(CDT(createCompressChain(), tileModel, usePixelData), colorModel, usePixelData), usePalette), id);
+            const useClusteredPalettes = usePaletteFilter;
+            const filterTask = usePaletteFilter ? TaskTypes.applyPaletteFilter : TaskTypes.applyFilter;
+            const enforcePalette = usePalette || usePaletteFilter;
+            const chain:Task[] = addId(createFilterChain(colorLab(CDT(createCompressChain(useClusteredPalettes), tileModel, usePixelData), colorModel, usePixelData), enforcePalette, useClusteredPalettes, filterTask), id);
+            console.log('dispatch chain (single):', chain.map(task => TaskTypes[task.action]));
             const nextTask = chain[0];
-            const props = { tiles: serializeTiles(tiles), colorModel, tileModel, k, bspt, colors };
+            const props = { tiles: serializeTiles(tiles), colorModel, tileModel, k, bspt, colors, paletteCount, paletteSize };
             nextTask.props = props;
             dispatchTasksAction({ type: 'task/add', payload: { id, chain } });
         }
@@ -118,9 +122,13 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
             for (let i = 0; i < files.length; i++) {
                 const { id, tiles } = files[i];
                 if(tiles){
-                    const chain:Task[] = addId(createFilterChain(colorLab(CDT(createCompressChain(), tileModel, usePixelData), colorModel, usePixelData), usePalette), id);
+                    const useClusteredPalettes = usePaletteFilter;
+                    const filterTask = usePaletteFilter ? TaskTypes.applyPaletteFilter : TaskTypes.applyFilter;
+                    const enforcePalette = usePalette || usePaletteFilter;
+                    const chain:Task[] = addId(createFilterChain(colorLab(CDT(createCompressChain(useClusteredPalettes), tileModel, usePixelData), colorModel, usePixelData), enforcePalette, useClusteredPalettes, filterTask), id);
+                    console.log('dispatch chain (all):', id, chain.map(task => TaskTypes[task.action]));
                     const nextTask = chain[0];
-                    const props = { tiles: serializeTiles(tiles), colorModel, tileModel, k, bspt, colors };
+                    const props = { tiles: serializeTiles(tiles), colorModel, tileModel, k, bspt, colors, paletteCount, paletteSize };
                     nextTask.props = props;
                     dispatchTasksAction({ type: 'task/add', payload: { id, chain } });
                 }
@@ -135,7 +143,7 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
         }
     }, [waitingToDownload, tasks]);
     useEffect(() => {
-        if(selectedPalette==-1){
+        if(selectedPalette==-1 && !usePaletteFilter){
             if(map){
                 const { tiles } = map;
                 if(tiles){
@@ -147,10 +155,10 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                 }
             }
         }
-        else{
+        else if (selectedPalette >= 0) {
             setMenuOptions({ ...menuOptions, colorPalette: { ...savedPalettes[selectedPalette] } });
         }
-    }, [selectedPalette, map?.image]);
+    }, [selectedPalette, map?.image, usePaletteFilter]);
     const applyPreset =() => {
         if(selectedPreset!=-1){
             setSelectedPreset(-1);
@@ -228,101 +236,141 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                     className="block text-sm font-medium leading-6"
                 >
                 </span>
-                <label>
-                    <span
-                        className="block text-sm font-medium leading-6"
-                    >
-                        color model
-                    </span>
-                    <select
-                        className='bg-primary-50 rounded-md border-0 shadow-sm ring-1 ring-inset ring-primary-200 focus:ring-2 focus:ring-inset sm:text-sm disabled:text-primary-200 px-2'
-                        value={selectedPalette}
-                        onChange={e => setMenuOptions({ ...menuOptions, selectedPalette: parseInt(e.target.value) })}
-                        disabled={isEditingPalette}
-                    >
-                        <option value={-1}>current colors</option>
-                        {savedPalettes.map((palette, i) => <option key={`palette-${i}`} value={i}>{palette.name}</option>)}
-                    </select>
-                </label>
-                <div className='flex'>
-                    <label className='flex-1'>
-                        Palette
+                {usePalette && !usePaletteFilter && <>
+                    <label>
+                        <span
+                            className="block text-sm font-medium leading-6"
+                        >
+                            palette
+                        </span>
+                        <select
+                            className='bg-primary-50 rounded-md border-0 shadow-sm ring-1 ring-inset ring-primary-200 focus:ring-2 focus:ring-inset sm:text-sm disabled:text-primary-200 px-2'
+                            value={selectedPalette}
+                            onChange={e => setMenuOptions({ ...menuOptions, selectedPalette: parseInt(e.target.value) })}
+                            disabled={isEditingPalette}
+                        >
+                            <option value={-1}>current colors</option>
+                            {savedPalettes.map((palette, i) => <option key={`palette-${i}`} value={i}>{palette.name}</option>)}
+                        </select>
                     </label>
-                    <button
-                        onClick={() => setConfigOptions({ ...ConfigOptions, savedPalettes: savedPalettes.filter((x, i) => (i != selectedPalette)) })}
-                        className='bg-primary-50 disabled:text-primary-200 border-2 border-primary-200 p-1'
-                        title='delete palette'
-                        disabled={selectedPalette==-1}
-                    >
-                        <GrTrash />
-                    </button>
-                    <button
-                        onMouseUp={savePalette} // onMouseUp prevents chain triggering after rerender
-                        className='bg-primary-50 disabled:text-primary-200 border-2 border-primary-200 p-1'
-                        title='save palette'
-                        disabled={!bspt}
-                    >
-                        <GrSave />
-                    </button>
-                    {isEditingPalette?
+                    <div className='flex'>
+                        <label className='flex-1'>
+                            Palette
+                        </label>
                         <button
-                            onMouseUp={()=>setIsEditingPalette(false)} // onMouseUp prevents chain triggering after rerender
+                            onClick={() => setConfigOptions({ ...ConfigOptions, savedPalettes: savedPalettes.filter((x, i) => (i != selectedPalette)) })}
                             className='bg-primary-50 disabled:text-primary-200 border-2 border-primary-200 p-1'
-                            title='close'
+                            title='delete palette'
+                            disabled={selectedPalette==-1}
+                        >
+                            <GrTrash />
+                        </button>
+                        <button
+                            onMouseUp={savePalette} // onMouseUp prevents chain triggering after rerender
+                            className='bg-primary-50 disabled:text-primary-200 border-2 border-primary-200 p-1'
+                            title='save palette'
                             disabled={!bspt}
                         >
-                            <GrClose />
-                        </button>:
-                        <button
-                            onMouseUp={editPalette} // onMouseUp prevents chain triggering after rerender
-                            className='bg-primary-50 disabled:text-primary-200 border-2 border-primary-200 p-1'
-                            title='import palette'
-                        >
-                            <GrEdit />
-                        </button>}
-                </div>
-                <div className='flex-1 overflow-auto min-h-6 h-[calc(100vh-35rem)]'>
-                    <div className={`flex flex-wrap ${isEditingPalette&&'gap-2 p-1'}`}>
-                        {colorPalette.colors.map((color, i) => <div
-                            key={`color-${i}`}
-                            className={`flex relative group ${isEditingPalette?'w-4 h-4':'w-6 h-6'}`}
-                            style={{ backgroundImage: 'linear-gradient(to right, black 50%, white 50%), linear-gradient(to bottom, black 50%, white 50%)', backgroundSize: '8px 8px', backgroundBlendMode: 'difference, normal' }}
-                        >
-                            {isEditingPalette&&<button
-                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                onClick={e => setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: colorPalette.colors.filter((x, j) => i != j) } })}
-                                className='absolute bg-primary-100 bg-primary-50 w-4 h-4 top-[-10px] right-[-10px] z-10 invisible group-hover:visible flex star border-2 border-primary-200 justify-center'
-                            ><GrClose /></button>}
-                            <div className='absolute w-full h-full' style={{ height: '100%', background: `rgb(${color.slice(0, 3).toString()})`, opacity: color[3]/255 }}></div>
-                            <input
-                                type="color"
-                                value={`#${color
-                                    .slice(0, 3)
-                                    .map(x => `0${x.toString(16)}`.slice(-2))
-                                    .join('')}`}
-                                onChange={(e) => setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: colorPalette.colors.map((x, j) => (i == j) ? [...e.target.value.match(/[a-f0-9]{2}/gi)?.map((v) => parseInt(v, 16)) || [], 255] as never : x) } })}
-                                className='opacity-0'
-                                disabled={!isEditingPalette}
-                            />
-                        </div>)}
-                        {isEditingPalette&&<button
-                            onClick={() => { setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: [...colorPalette.colors, [0, 0, 0, 255]] } }); }}
-                            disabled={(colorPalette.colors.length >= 255)}
-                            className='bg-primary-50 disabled:text-primary-200 flex relative w-6 h-6 border-2 border-primary-200 text-center justify-center'
-                        ><GrAdd /></button>}
+                            <GrSave />
+                        </button>
+                        {isEditingPalette?
+                            <button
+                                onMouseUp={()=>setIsEditingPalette(false)} // onMouseUp prevents chain triggering after rerender
+                                className='bg-primary-50 disabled:text-primary-200 border-2 border-primary-200 p-1'
+                                title='close'
+                                disabled={!bspt}
+                            >
+                                <GrClose />
+                            </button>:
+                            <button
+                                onMouseUp={editPalette} // onMouseUp prevents chain triggering after rerender
+                                className='bg-primary-50 disabled:text-primary-200 border-2 border-primary-200 p-1'
+                                title='import palette'
+                            >
+                                <GrEdit />
+                            </button>}
                     </div>
-                </div>
+                    <div className='flex-1 overflow-auto min-h-6 h-[calc(100vh-35rem)]'>
+                        <div className={`flex flex-wrap ${isEditingPalette&&'gap-2 p-1'}`}>
+                            {colorPalette.colors.map((color, i) => <div
+                                key={`color-${i}`}
+                                className={`flex relative group ${isEditingPalette?'w-4 h-4':'w-6 h-6'}`}
+                                style={{ backgroundImage: 'linear-gradient(to right, black 50%, white 50%), linear-gradient(to bottom, black 50%, white 50%)', backgroundSize: '8px 8px', backgroundBlendMode: 'difference, normal' }}
+                            >
+                                {isEditingPalette&&<button
+                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                    onClick={e => setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: colorPalette.colors.filter((x, j) => i != j) } })}
+                                    className='absolute bg-primary-100 bg-primary-50 w-4 h-4 top-[-10px] right-[-10px] z-10 invisible group-hover:visible flex star border-2 border-primary-200 justify-center'
+                                ><GrClose /></button>}
+                                <div className='absolute w-full h-full' style={{ height: '100%', background: `rgb(${color.slice(0, 3).toString()})`, opacity: color[3]/255 }}></div>
+                                <input
+                                    type="color"
+                                    value={`#${color
+                                        .slice(0, 3)
+                                        .map(x => `0${x.toString(16)}`.slice(-2))
+                                        .join('')}`}
+                                    onChange={(e) => setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: colorPalette.colors.map((x, j) => (i == j) ? [...e.target.value.match(/[a-f0-9]{2}/gi)?.map((v) => parseInt(v, 16)) || [], 255] as never : x) } })}
+                                    className='opacity-0'
+                                    disabled={!isEditingPalette}
+                                />
+                            </div>)}
+                            {isEditingPalette&&<button
+                                onClick={() => { setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, colors: [...colorPalette.colors, [0, 0, 0, 255]] } }); }}
+                                disabled={(colorPalette.colors.length >= 255)}
+                                className='bg-primary-50 disabled:text-primary-200 flex relative w-6 h-6 border-2 border-primary-200 text-center justify-center'
+                            ><GrAdd /></button>}
+                        </div>
+                    </div>
+                </>}
+                {usePalette && usePaletteFilter && <>
+                    <label className='flex flex-col'>
+                        <span
+                            className="block text-sm font-medium leading-6"
+                        >
+                            palette count (M)
+                        </span>
+                        <input
+                            id="palette-count"
+                            type="number"
+                            min={1}
+                            max={maxK}
+                            value={paletteCount}
+                            onChange={(e) => {
+                                const next = parseInt(e.target.value);
+                                setMenuOptions({ ...menuOptions, paletteCount: Number.isNaN(next) ? 1 : Math.max(1, next) });
+                            }}
+                            className='bg-primary-50 rounded-md border-0 shadow-sm ring-1 ring-inset ring-primary-200 focus:ring-2 focus:ring-inset sm:text-sm disabled:text-primary-200 px-2' />
+                    </label>
+                    <label className='flex flex-col'>
+                        <span
+                            className="block text-sm font-medium leading-6"
+                        >
+                            colors per palette (N)
+                        </span>
+                        <input
+                            id="palette-size"
+                            type="number"
+                            min={1}
+                            max={256}
+                            value={paletteSize}
+                            onChange={(e) => {
+                                const next = parseInt(e.target.value);
+                                setMenuOptions({ ...menuOptions, paletteSize: Number.isNaN(next) ? 1 : Math.max(1, next) });
+                            }}
+                            className='bg-primary-50 rounded-md border-0 shadow-sm ring-1 ring-inset ring-primary-200 focus:ring-2 focus:ring-inset sm:text-sm disabled:text-primary-200 px-2' />
+                    </label>
+                </>}
                 <button
                     onClick={compress}
                     className="rounded-md bg-primary-300 disabled:bg-primary-400 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300 mt-3 mb-1"
-                    disabled={(!map)||(usePalette&&!bspt)||(Object.keys(tasks).length>0)}
+                    disabled={(!map)||((usePalette && !usePaletteFilter) && !bspt)||(Object.keys(tasks).length>0)}
                 >
                     compress
                 </button>
                 <button
                     onClick={compressAll}
                     className="rounded-md bg-primary-300 disabled:bg-primary-400 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-300 mt-1 mb-3"
-                    disabled={(!map)||(usePalette&&!bspt)||(Object.keys(tasks).length>0)}
+                    disabled={(!map)||((usePalette && !usePaletteFilter) && !bspt)||(Object.keys(tasks).length>0)}
                 >
                     compress all <GrDownload className='inline-block align-top' />
                 </button>
@@ -362,6 +410,25 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                             .filter(v => typeof v === 'number')
                             .map((key) => <option key={key} value={key}>{TileModel[key as TileModel]}</option>
                             )}
+                    </select>
+                </label>
+                <label>
+                    <span
+                        className="block text-sm font-medium leading-6"
+                    >
+                        color filter mode
+                    </span>
+                    <select
+                        className='bg-primary-50 rounded-md border-0 shadow-sm ring-1 ring-inset ring-primary-200 focus:ring-2 focus:ring-inset sm:text-sm disabled:text-primary-200 px-2'
+                        value={usePaletteFilter ? 'palette' : 'filter'}
+                        onChange={e => {
+                            const nextUsePaletteFilter = e.target.value === 'palette';
+                            if (nextUsePaletteFilter) setIsEditingPalette(false);
+                            setMenuOptions({ ...menuOptions, usePaletteFilter: nextUsePaletteFilter, usePalette: true, selectedPalette: -1 });
+                        }}
+                    >
+                        <option value='filter'>applyFilter (single palette)</option>
+                        <option value='palette'>applyPaletteFilter (closest palette)</option>
                     </select>
                 </label>
                 {/* <label>

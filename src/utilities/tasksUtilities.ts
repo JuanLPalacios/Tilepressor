@@ -6,8 +6,30 @@ export function addId(arg0: { action: TaskTypes; progress: number; }[], id: numb
     return arg0.map(x=>({ ...x, id }));
 }
 
-export function createFilterChain(arg0: { action: TaskTypes; progress: number; }[], usePalette: boolean): { action: TaskTypes; progress: number; }[] {
-    return usePalette? [{ action: TaskTypes.generateBSPT, progress: 0 }, ...arg0, { action: TaskTypes.applyFilter, progress: 0 }]:arg0;
+export function createFilterChain(
+    arg0: { action: TaskTypes; progress: number; }[],
+    usePalette: boolean,
+    useClusteredPalettes = false,
+    filterTask: TaskTypes = TaskTypes.applyFilter
+): { action: TaskTypes; progress: number; }[] {
+    console.log('createFilterChain input:', arg0.map(task => TaskTypes[task.action]), {
+        usePalette,
+        useClusteredPalettes,
+        filterTask: TaskTypes[filterTask]
+    });
+    if (!usePalette) return arg0;
+    if (filterTask === TaskTypes.applyPaletteFilter) {
+        const withoutFilters = arg0.filter(task => task.action !== TaskTypes.applyFilter && task.action !== TaskTypes.applyPaletteFilter);
+        const hasClusterStep = withoutFilters.some(task => task.action === TaskTypes.clusterPalettes);
+        const chain = hasClusterStep ? withoutFilters : [...withoutFilters, { action: TaskTypes.clusterPalettes, progress: 0 }];
+        const result = [...chain, { action: TaskTypes.applyPaletteFilter, progress: 0 }];
+        console.log('createFilterChain output:', result.map(task => TaskTypes[task.action]));
+        return result;
+    }
+    if (useClusteredPalettes) return [...arg0, { action: TaskTypes.applyFilter, progress: 0 }];
+    const result = [{ action: TaskTypes.generateBSPT, progress: 0 }, ...arg0, { action: TaskTypes.applyFilter, progress: 0 }];
+    console.log('createFilterChain output:', result.map(task => TaskTypes[task.action]));
+    return result;
 }
 
 export function colorLab(arg0: { action: TaskTypes; progress: number; }[], colorModel: ColorModel, usePixelData:boolean): { action: TaskTypes; progress: number; }[] {
@@ -18,8 +40,8 @@ export function CDT(arg0: { action: TaskTypes; progress: number; }[], tileModel:
     return (tileModel!==TileModel.Raster)? [{ action: TaskTypes.pixels2dct, progress: 0 }, ...arg0, ...(usePixelData?[]:[{ action: TaskTypes.cdt2pixels, progress: 0 }])]:arg0;
 }
 
-export function createCompressChain(): { action: TaskTypes; progress: number; }[] {
-    return [{ action: TaskTypes.kMeansPlusPlus, progress: 0 }];
+export function createCompressChain(useClusteredPalettes = false): { action: TaskTypes; progress: number; }[] {
+    return [{ action: TaskTypes.kMeansPlusPlus, progress: 0 }, ...(useClusteredPalettes ? [{ action: TaskTypes.clusterPalettes, progress: 0 }] : [])];
 }
 let _id = Date.now();
 export const UUID = () => `${++_id}`;
