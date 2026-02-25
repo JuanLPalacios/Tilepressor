@@ -4,6 +4,7 @@ import { TileModel } from '~/enums/TileModel';
 import { bspNode } from '~/utilities/bsp';
 import { StatePair } from '~/types/StatePair';
 import { Color } from '~/types/Color';
+import { TaskBlock } from '~/components/TaskChainEditor';
 
 export const MENU_OPTIONS_STORAGE_KEY = 'MenuOptions';
 
@@ -19,6 +20,8 @@ export type CompressionOptions = {
     paletteCount: number,
     paletteSize: number,
     colorPalette: ColorPalette
+    palettes?: Color[][]
+    taskBlocks?: TaskBlock[]
 };
 
 export type AbstractionOptions = {

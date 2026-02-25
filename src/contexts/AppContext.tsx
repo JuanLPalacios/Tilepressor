@@ -5,7 +5,7 @@ import { TileModel } from '~/enums/TileModel';
 import { ColorModel } from '~/enums/ColorModel';
 import { MapFeedback, MapFeedbackContext } from './MapFeedback';
 import { TasksContext, tasksReducer } from './TasksState';
-import { TileWorker, WorkerResponse } from '~/types/TileWorker';
+import { TileWorker, WorkerData, WorkerResponse } from '~/types/TileWorker';
 import { TaskTypes } from '~/enums/TaskType';
 import { createImageData, loadData } from '~/utilities/2dContextUtilities';
 import { FilesContext, filesReducer } from './FilesStates';
@@ -13,6 +13,7 @@ import { SizeContext } from './Size';
 import { img2Tiles } from '~/utilities/tileUtilities';
 import { GLOBAL_TASK_ID } from './GLOBAL_TASK_ID';
 import { CONFIG_OPTIONS_STORAGE_KEY, ConfigOptions, ConfigOptionsContext } from './ConfigOptions';
+import { MenuWidthContext } from './MenuWidth';
 
 export const AppStateProvider = (props: { children: string | number | boolean | ReactElement<unknown, string | JSXElementConstructor<unknown>> | ReactFragment | ReactPortal | null | undefined; }) => {
     const tileWorker: TileWorker = useMemo(
@@ -33,7 +34,8 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
             usePixelData: true,
             usePaletteFilter: false,
             paletteCount: 1,
-            paletteSize: 256
+            paletteSize: 256,
+            palettes: []
         };
         const value = window.localStorage.getItem(MENU_OPTIONS_STORAGE_KEY);
         if(!value) return defaults;
@@ -81,6 +83,7 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
     const { usePixelData, colorPalette } = menuOptions;
     const { saveFreq } = configOptions;
     const [size, setSize] = useState({ width: 0, height: 0 });
+    const [menuWidth, setMenuWidth] = useState(240);
     const { tileDimensions } = menuOptions;
     useLayoutEffect(() => {
         function updateSize() {
@@ -103,7 +106,7 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
         }, 3000);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [files.length, tileDimensions]);
+    }, [files, tileDimensions, dispatchFilesAction]);
     if (window.Worker) {
         tileWorker.onmessage = (e: MessageEvent<WorkerResponse>) => {
             const { id, action, progress, data } = e.data;
@@ -134,12 +137,17 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
                         if(bspt)setMenuOptions({ ...menuOptions, colorPalette: { ...colorPalette, bspt } });
                     }
                     break;
+                case TaskTypes.clusterPalettes:
+                    if(palettes) setMenuOptions({ ...menuOptions, palettes });
+                    break;
                 default:
                     break;
                 }
                 if(i<chain.length-1){
                     const nextTask = chain[i+1];
                     const props = { ...task.props, ...data };
+                    const workerData = data as Partial<WorkerData>;
+                    console.log('task complete:', TaskTypes[action], 'next:', TaskTypes[nextTask.action], 'palettes:', workerData.palettes?.length, 'paletteBspts:', workerData.paletteBspts?.length);
                     nextTask.props = props;
                     tileWorker.postMessage({ id, action: nextTask.action, props }, []);
                     dispatchTasksAction({ type: 'task/update', payload: { id, task: { ...task, progress } } });
@@ -165,18 +173,20 @@ export const AppStateProvider = (props: { children: string | number | boolean | 
     useEffect(()=>{
         const id = setTimeout(()=>{ window.localStorage.setItem(MENU_OPTIONS_STORAGE_KEY, JSON.stringify(menuOptions)); }, saveFreq);
         return ()=>clearTimeout(id);
-    }, [menuOptions]);
+    }, [menuOptions, saveFreq]);
     useEffect(()=>{
         const id = setTimeout(()=>{ window.localStorage.setItem(CONFIG_OPTIONS_STORAGE_KEY, JSON.stringify(configOptions)); }, saveFreq);
         return ()=>clearTimeout(id);
-    }, [configOptions]);
+    }, [configOptions, saveFreq]);
     return<MapFeedbackContext.Provider value={useMapFeedback}>
         <MenuOptionsContext.Provider value={useMenuOptions}>
             <ConfigOptionsContext.Provider value={useConfigOptions}>
                 <TasksContext.Provider value={useTasks}>
                     <FilesContext.Provider value={useFiles}>
                         <SizeContext.Provider value={size}>
-                            {props.children}
+                            <MenuWidthContext.Provider value={{ width: menuWidth, setWidth: setMenuWidth }}>
+                                {props.children}
+                            </MenuWidthContext.Provider>
                         </SizeContext.Provider>
                     </FilesContext.Provider>
                 </TasksContext.Provider>
