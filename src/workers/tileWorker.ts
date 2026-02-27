@@ -71,6 +71,7 @@ export {};
 
 const getColorsCash:{[key:string]:Color[]} = {};
 function getColorsWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('getColorsWrapper called with tiles:', tiles);
     const key = tiles.toString();
     const cash = getColorsCash[key];
     if(cash) return self.postMessage({ id, action: TaskTypes.getColors, data: { colors: cash }, progress: 1 });
@@ -81,12 +82,14 @@ function getColorsWrapper({ props: { tiles }, id }:CompressorMessageData&{id:str
 }
 
 function kMeansPlusPlusWrapper({ props: { tiles, k, colorModel, tileModel }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('kMeansPlusPlusWrapper called with k:', k, 'colorModel:', colorModel, 'tileModel:', tileModel);
     const { distanceFunc, centroidFunc } = getModelFunctions(colorModel, tileModel);
     tiles = kMeansPlusPlus(tiles, k, distanceFunc, centroidFunc, (progress: number)=>{ self.postMessage({ id, action: TaskTypes.kMeansPlusPlus, data: { }, progress: progress }); });
     self.postMessage({ id, action: TaskTypes.kMeansPlusPlus, data: { tiles }, progress: 1 });
 }
 
 function cdt2pixelsWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('cdt2pixelsWrapper called with tiles:', tiles);
     tiles.forEach((tile, i)=>{
         if(i%10==0)self.postMessage({ id, action: TaskTypes.cdt2pixels, data: { }, progress: i/tiles.length });
         tile.data = dct2pixels(tile.data);
@@ -97,6 +100,7 @@ function cdt2pixelsWrapper({ props: { tiles }, id }:CompressorMessageData&{id:st
 
 const pixels2dctCash:{[key:string]:SerializableTile[]} = {};
 function pixels2dctWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('pixels2dctWrapper called with tiles:', tiles);
     const key = tiles.toString();
     const cash = pixels2dctCash[key];
     if(cash) return self.postMessage({ id, action: TaskTypes.pixels2dct, data: { tiles: cash }, progress: 1 });
@@ -111,6 +115,7 @@ function pixels2dctWrapper({ props: { tiles }, id }:CompressorMessageData&{id:st
 
 const rgb2labCash:{[key:string]:SerializableTile[]} = {};
 function rgb2labWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('rgb2labWrapper called with tiles:', tiles);
     const key = tiles.toString();
     const cash = rgb2labCash[key];
     if(cash) return self.postMessage({ id, action: TaskTypes.rgb2lab, data: { tiles: cash }, progress: 1 });
@@ -124,6 +129,7 @@ function rgb2labWrapper({ props: { tiles }, id }:CompressorMessageData&{id:strin
 }
 
 function lab2rgbWrapper({ props: { tiles }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('lab2rgbWrapper called with tiles:', tiles);
     tiles.forEach((tile, i)=>{
         if(i%10==0)self.postMessage({ id, action: TaskTypes.lab2rgb, data: { }, progress: i/tiles.length });
         tile.data = changeTileColorSpace(tile, lab2rgb).data;
@@ -132,6 +138,7 @@ function lab2rgbWrapper({ props: { tiles }, id }:CompressorMessageData&{id:strin
 }
 
 function lab2cgbIndexWrapper({ props: { tiles, palettes, paletteIndexes }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('lab2cgbIndexWrapper called with tiles:', tiles);
     const paletteLabCache: { [key: number]: number[][] } = {};
     tiles.forEach((tile, i)=>{
         if(i%10==0)self.postMessage({ id, action: TaskTypes.lab2cgbIndex, data: { }, progress: i/tiles.length });
@@ -163,6 +170,7 @@ function lab2cgbIndexWrapper({ props: { tiles, palettes, paletteIndexes }, id }:
 }
 
 function cgbIndex2labWrapper({ props: { tiles, palettes, paletteIndexes }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('cgbIndex2labWrapper called with tiles:', tiles);
     const paletteLabCache: { [key: number]: number[][] } = {};
     tiles.forEach((tile, i)=>{
         if(i%10==0)self.postMessage({ id, action: TaskTypes.cgbIndex2lab, data: { }, progress: i/tiles.length });
@@ -195,6 +203,7 @@ function cgbIndex2labWrapper({ props: { tiles, palettes, paletteIndexes }, id }:
 }
 
 function applyFilterWrapper({ props: { tiles, bspt, paletteBspts, paletteIndexes }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('applyFilterWrapper called with tiles:', tiles);
     tiles.forEach((tile, i)=>{
         const paletteIndex = paletteIndexes?.[i];
         const paletteBspt = (paletteIndex !== undefined && paletteBspts)? paletteBspts[paletteIndex] : undefined;
@@ -257,10 +266,12 @@ function clusterPalettesWrapper({ props: { tiles, paletteCount, paletteSize }, i
     self.postMessage({ id, action: TaskTypes.clusterPalettes, data: { palettes, paletteIndexes, paletteBspts }, progress: 1 });
 }
 function generateBSPTWrapper({ props: { colors }, id }:CompressorMessageData&{id:string|number}): void {
+    console.log('generateBSPTWrapper called with colors:', colors);
     const bspt = generateBsptFromPoints(Object.values(colors.reduce((map, color)=>({ ...map, [color.toString()]: color }), {} as {[key:string]:Color})), calculateDivider, isFront, (progress)=>(progress!=1)&&self.postMessage({ id, action: TaskTypes.generateBSPT, data: { }, progress }));
     self.postMessage({ id, action: TaskTypes.generateBSPT, data: { bspt }, progress: 1 });
 }
 function cleanCacheWrapper(): void {
+    console.log('cleanCacheWrapper called');
     const globalCache = [rgb2labCash, pixels2dctCash, getColorsCash];
     globalCache.forEach(cache=>{
         Object.keys(cache).forEach(key=>{

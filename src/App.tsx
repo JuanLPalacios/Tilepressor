@@ -11,6 +11,7 @@ import { SizeContext } from './contexts/Size';
 import { UUID } from './utilities/tasksUtilities';
 import { MapLabel } from './components/MapLable';
 import { useRegisterSW } from 'virtual:pwa-register/react';
+import { MenuWidthContext } from './contexts/MenuWidth';
 
 export const App = () => {
     useRegisterSW({
@@ -24,6 +25,7 @@ export const App = () => {
     const [{ tileDimensions }] = useContext(MenuOptionsContext);
     const [maps, dispatchFilesAction] = useContext(FilesContext);
     const { height, width } = useContext(SizeContext);
+    const { width: menuWidth } = useContext(MenuWidthContext);
     const [activeTab, setActiveTab] = useState<number>(0);
     const fileSet = (e:React.ChangeEvent<HTMLInputElement>) => {
         const filePicker = e.target;
@@ -52,7 +54,7 @@ export const App = () => {
     return (
         <div className="bg-primary-100 text-primary-400 flex overflow-hidden">
             <div>
-                <Tabs active={activeTab} onActiveChange={_e=>setActiveTab(activeTab)} width={width -240} height={height}>
+                <Tabs active={activeTab} onActiveChange={_e=>setActiveTab(activeTab)} width={width - menuWidth} height={height}>
                     {maps.map((map)=>(<MapView
                         map={map}
                         key={`map-${map.id}`}
@@ -85,7 +87,7 @@ export const App = () => {
                 </Tabs>
             </div>
             <div className=''>
-                <Menu width={240} height={height} />
+                <Menu width={menuWidth} height={height} />
             </div>
         </div>
     );

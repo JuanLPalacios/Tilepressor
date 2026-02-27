@@ -1,4 +1,5 @@
 export enum ColorModel {
     RGB,
-    Lab
+    Lab,
+    CGBIndex
 }

@@ -2,6 +2,8 @@ import { TaskTypes } from '../enums/TaskType';
 import { ColorModel } from '../enums/ColorModel';
 import { TileModel } from '../enums/TileModel';
 import { GrAdd, GrTrash, GrDrag } from 'react-icons/gr';
+import { Palette } from './Palette';
+import { Color } from '../types/Color';
 
 export type BlockType =
     | 'compress'
@@ -116,37 +118,87 @@ export const TaskChainEditor = ({
         const params = block.params || {};
 
         switch (block.type) {
-        case 'filter':
+        case 'filter': {
+            const filterUsePalette = (params.usePalette as boolean) ?? usePalette;
+            const filterPalettes = (params.palettes as Color[][] | undefined);
+
             return (
-                <div className="mt-2 grid grid-cols-3 gap-1 text-xs">
-                    <label className="flex items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={(params.usePalette as boolean) ?? usePalette}
-                            onChange={(e) => updateBlockParam(path, 'usePalette', e.target.checked)}
-                            className="w-3 h-3"
-                        />
-                        Use Palette
-                    </label>
-                    <label className="flex items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={(params.useClusteredPalettes as boolean) ?? usePaletteFilter}
-                            onChange={(e) => updateBlockParam(path, 'useClusteredPalettes', e.target.checked)}
-                            className="w-3 h-3"
-                        />
-                        Clustered
-                    </label>
-                    <select
-                        value={(params.filterTask as number) ?? TaskTypes.applyFilter}
-                        onChange={(e) => updateBlockParam(path, 'filterTask', parseInt(e.target.value))}
-                        className="text-xs px-1 py-0.5 border border-gray-300 rounded"
-                    >
-                        <option value={TaskTypes.applyFilter}>applyFilter</option>
-                        <option value={TaskTypes.applyPaletteFilter}>applyPaletteFilter</option>
-                    </select>
+                <div className="mt-2">
+                    <div className="grid grid-cols-3 gap-1 text-xs mb-2">
+                        <label className="flex items-center gap-1">
+                            <input
+                                type="checkbox"
+                                checked={filterUsePalette}
+                                onChange={(e) => updateBlockParam(path, 'usePalette', e.target.checked)}
+                                className="w-3 h-3"
+                            />
+                            Use Palette
+                        </label>
+                        <label className="flex items-center gap-1">
+                            <input
+                                type="checkbox"
+                                checked={(params.useClusteredPalettes as boolean) ?? usePaletteFilter}
+                                onChange={(e) => updateBlockParam(path, 'useClusteredPalettes', e.target.checked)}
+                                className="w-3 h-3"
+                            />
+                            Clustered
+                        </label>
+                        <select
+                            value={(params.filterTask as number) ?? TaskTypes.applyFilter}
+                            onChange={(e) => updateBlockParam(path, 'filterTask', parseInt(e.target.value))}
+                            className="text-xs px-1 py-0.5 border border-gray-300 rounded"
+                        >
+                            <option value={TaskTypes.applyFilter}>applyFilter</option>
+                            <option value={TaskTypes.applyPaletteFilter}>applyPaletteFilter</option>
+                        </select>
+                    </div>
+
+                    {filterUsePalette && (
+                        <div className="mt-2 border-t border-gray-200 pt-2">
+                            <div className="text-xs font-medium mb-2">Palettes:</div>
+                            <div className="flex flex-col gap-2">
+                                {(filterPalettes && filterPalettes.length ? filterPalettes : [[]]).map((paletteColors, index) => (
+                                    <div key={`palette-${index}`} className="relative">
+                                        {filterPalettes && filterPalettes.length > 1 && (
+                                            <button
+                                                onClick={() => {
+                                                    const nextPalettes = filterPalettes.filter((_, i) => i !== index);
+                                                    updateBlockParam(path, 'palettes', nextPalettes);
+                                                }}
+                                                className="absolute top-0 right-0 bg-gray-50 border border-gray-300 p-[0.1rem] leading-[0.9rem] text-xs z-10"
+                                                title="remove palette"
+                                            >
+                                                -
+                                            </button>
+                                        )}
+                                        <Palette
+                                            colorPalette={{ colors: paletteColors }}
+                                            setColorPalette={(newPalette) => {
+                                                const palettes = filterPalettes && filterPalettes.length ? filterPalettes : [[]];
+                                                const nextPalettes = palettes.map((colors, i) => (i === index ? newPalette.colors : colors));
+                                                updateBlockParam(path, 'palettes', nextPalettes);
+                                            }}
+                                            disabled={false}
+                                        />
+                                    </div>
+                                ))}
+                                <button
+                                    onClick={() => {
+                                        const palettes = filterPalettes && filterPalettes.length ? filterPalettes : [[]];
+                                        const nextPalettes = [...palettes, []];
+                                        updateBlockParam(path, 'palettes', nextPalettes);
+                                    }}
+                                    className="w-full p-2 border-2 border-dashed border-gray-300 rounded hover:bg-gray-50 text-xs"
+                                    title="add palette"
+                                >
+                                    + Add Palette
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
+        }
 
         case 'colorLab':
             return (
