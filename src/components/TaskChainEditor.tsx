@@ -120,7 +120,10 @@ export const TaskChainEditor = ({
         switch (block.type) {
         case 'filter': {
             const filterUsePalette = (params.usePalette as boolean) ?? usePalette;
+            const filterUseClusteredPalettes = (params.useClusteredPalettes as boolean) ?? usePaletteFilter;
             const filterPalettes = (params.palettes as Color[][] | undefined);
+            const filterPaletteCount = (params.paletteCount as number) ?? 2;
+            const filterPaletteSize = (params.paletteSize as number) ?? 16;
 
             return (
                 <div className="mt-2">
@@ -137,7 +140,7 @@ export const TaskChainEditor = ({
                         <label className="flex items-center gap-1">
                             <input
                                 type="checkbox"
-                                checked={(params.useClusteredPalettes as boolean) ?? usePaletteFilter}
+                                checked={filterUseClusteredPalettes}
                                 onChange={(e) => updateBlockParam(path, 'useClusteredPalettes', e.target.checked)}
                                 className="w-3 h-3"
                             />
@@ -153,7 +156,40 @@ export const TaskChainEditor = ({
                         </select>
                     </div>
 
-                    {filterUsePalette && (
+                    {filterUsePalette && filterUseClusteredPalettes && (
+                        <div className="grid grid-cols-2 gap-2 mb-2 text-xs">
+                            <label className="flex flex-col">
+                                <span className="font-medium mb-1">Palette count (M)</span>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={256}
+                                    value={filterPaletteCount}
+                                    onChange={(e) => {
+                                        const next = parseInt(e.target.value);
+                                        updateBlockParam(path, 'paletteCount', Number.isNaN(next) ? 1 : Math.max(1, next));
+                                    }}
+                                    className="px-2 py-1 border border-gray-300 rounded"
+                                />
+                            </label>
+                            <label className="flex flex-col">
+                                <span className="font-medium mb-1">Colors per palette (N)</span>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={256}
+                                    value={filterPaletteSize}
+                                    onChange={(e) => {
+                                        const next = parseInt(e.target.value);
+                                        updateBlockParam(path, 'paletteSize', Number.isNaN(next) ? 1 : Math.max(1, next));
+                                    }}
+                                    className="px-2 py-1 border border-gray-300 rounded"
+                                />
+                            </label>
+                        </div>
+                    )}
+
+                    {filterUsePalette && !filterUseClusteredPalettes && (
                         <div className="mt-2 border-t border-gray-200 pt-2">
                             <div className="text-xs font-medium mb-2">Palettes:</div>
                             <div className="flex flex-col gap-2">
@@ -230,36 +266,66 @@ export const TaskChainEditor = ({
 
         case 'cdt':
             return (
-                <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
-                    <select
-                        value={(params.tileModel as number) ?? tileModel}
-                        onChange={(e) => updateBlockParam(path, 'tileModel', parseInt(e.target.value))}
-                        className="text-xs px-1 py-0.5 border border-gray-300 rounded"
-                    >
-                        {Object.keys(TileModel)
-                            .filter(key => !isNaN(Number(key)))
-                            .map((key) => (
-                                <option key={key} value={key}>
-                                    {TileModel[parseInt(key)]}
-                                </option>
-                            ))}
-                    </select>
+                <div className="mt-2 text-xs">
+                    <div className="grid grid-cols-2 gap-1 mb-2">
+                        <select
+                            value={(params.tileModel as number) ?? tileModel}
+                            onChange={(e) => updateBlockParam(path, 'tileModel', parseInt(e.target.value))}
+                            className="text-xs px-1 py-0.5 border border-gray-300 rounded"
+                        >
+                            {Object.keys(TileModel)
+                                .filter(key => !isNaN(Number(key)))
+                                .map((key) => (
+                                    <option key={key} value={key}>
+                                        {TileModel[parseInt(key)]}
+                                    </option>
+                                ))}
+                        </select>
+                        <label className="flex items-center gap-1">
+                            <input
+                                type="checkbox"
+                                checked={(params.usePixelData as boolean) ?? false}
+                                onChange={(e) => updateBlockParam(path, 'usePixelData', e.target.checked)}
+                                className="w-3 h-3"
+                            />
+                            Pixel Data
+                        </label>
+                    </div>
                     <label className="flex items-center gap-1">
                         <input
                             type="checkbox"
-                            checked={(params.usePixelData as boolean) ?? false}
-                            onChange={(e) => updateBlockParam(path, 'usePixelData', e.target.checked)}
+                            checked={(params.allowXYFlipping as boolean) ?? false}
+                            onChange={(e) => updateBlockParam(path, 'allowXYFlipping', e.target.checked)}
                             className="w-3 h-3"
                         />
-                        Pixel Data
+                        Allow XY Flipping
                     </label>
                 </div>
             );
 
-        case 'compress':
+        case 'compress': {
+            const compressK = (params.k as number) ?? 32;
+            const maxK = (params.maxK as number) ?? 256;
+
             return (
                 <div className="mt-2 text-xs">
-                    <label className="flex items-center gap-1">
+                    <label>
+                        <div className="font-medium">target tile count</div>
+                        <div className="font-medium">
+                            (<span>{Math.min(compressK, maxK)}</span> / <span>{maxK}</span>)
+                        </div>
+                        <div className="flex">
+                            <input
+                                type="range"
+                                value={Math.min(compressK, maxK)}
+                                min={1}
+                                max={maxK}
+                                onChange={(e) => updateBlockParam(path, 'k', parseInt(e.target.value))}
+                                className="w-full accent-gray-400"
+                            />
+                        </div>
+                    </label>
+                    <label className="flex items-center gap-1 mt-2">
                         <input
                             type="checkbox"
                             checked={(params.useClusteredPalettes as boolean) ?? false}
@@ -270,6 +336,7 @@ export const TaskChainEditor = ({
                     </label>
                 </div>
             );
+        }
 
         default:
             return null;
