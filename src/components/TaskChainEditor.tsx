@@ -25,19 +25,33 @@ export interface TaskBlock {
 interface TaskChainEditorProps {
     blocks: TaskBlock[];
     onChange: (blocks: TaskBlock[]) => void;
-    colorModel: ColorModel;
-    tileModel: TileModel;
-    usePalette: boolean;
-    usePaletteFilter: boolean;
 }
+
+// Color transform task maps
+const COLOR_FORWARD_TRANSFORMS: Record<ColorModel, string> = {
+    [ColorModel.RGB]: '→ no color transform',
+    [ColorModel.Lab]: '→ rgb2lab',
+    [ColorModel.CGBIndex]: '→ lab2cgbIndex',
+};
+
+const COLOR_REVERSE_TRANSFORMS: Record<ColorModel, string> = {
+    [ColorModel.Lab]: '→ lab2rgb',
+    [ColorModel.CGBIndex]: '→ cgbIndex2lab',
+};
+
+// DCT transform task maps
+const DCT_FORWARD_TRANSFORMS: Record<TileModel, string> = {
+    [TileModel.Raster]: '→ no DCT transform',
+    [TileModel.CDT]: '→ pixels2dct',
+};
+
+const DCT_REVERSE_TRANSFORMS: Record<TileModel, string> = {
+    [TileModel.CDT]: '→ cdt2pixels',
+};
 
 export const TaskChainEditor = ({
     blocks,
-    onChange,
-    colorModel,
-    tileModel,
-    usePalette,
-    usePaletteFilter
+    onChange
 }: TaskChainEditorProps) => {
     const generateId = () => `block_${Date.now()}_${Math.random()
         .toString(36)
@@ -119,8 +133,8 @@ export const TaskChainEditor = ({
 
         switch (block.type) {
         case 'filter': {
-            const filterUsePalette = (params.usePalette as boolean) ?? usePalette;
-            const filterUseClusteredPalettes = (params.useClusteredPalettes as boolean) ?? usePaletteFilter;
+            const filterUsePalette = (params.usePalette as boolean) ?? false;
+            const filterUseClusteredPalettes = (params.useClusteredPalettes as boolean) ?? false;
             const filterPalettes = (params.palettes as Color[][] | undefined);
             const filterPaletteCount = (params.paletteCount as number) ?? 2;
             const filterPaletteSize = (params.paletteSize as number) ?? 16;
@@ -240,7 +254,7 @@ export const TaskChainEditor = ({
             return (
                 <div className="mt-2 grid grid-cols-2 gap-1 text-xs">
                     <select
-                        value={(params.colorModel as number) ?? colorModel}
+                        value={(params.colorModel as number) ?? ColorModel.RGB}
                         onChange={(e) => updateBlockParam(path, 'colorModel', parseInt(e.target.value))}
                         className="text-xs px-1 py-0.5 border border-gray-300 rounded"
                     >
@@ -252,15 +266,6 @@ export const TaskChainEditor = ({
                                 </option>
                             ))}
                     </select>
-                    <label className="flex items-center gap-1">
-                        <input
-                            type="checkbox"
-                            checked={(params.usePixelData as boolean) ?? false}
-                            onChange={(e) => updateBlockParam(path, 'usePixelData', e.target.checked)}
-                            className="w-3 h-3"
-                        />
-                        Pixel Data
-                    </label>
                 </div>
             );
 
@@ -269,7 +274,7 @@ export const TaskChainEditor = ({
                 <div className="mt-2 text-xs">
                     <div className="grid grid-cols-2 gap-1 mb-2">
                         <select
-                            value={(params.tileModel as number) ?? tileModel}
+                            value={(params.tileModel as number) ?? TileModel.Raster}
                             onChange={(e) => updateBlockParam(path, 'tileModel', parseInt(e.target.value))}
                             className="text-xs px-1 py-0.5 border border-gray-300 rounded"
                         >
@@ -281,15 +286,6 @@ export const TaskChainEditor = ({
                                     </option>
                                 ))}
                         </select>
-                        <label className="flex items-center gap-1">
-                            <input
-                                type="checkbox"
-                                checked={(params.usePixelData as boolean) ?? false}
-                                onChange={(e) => updateBlockParam(path, 'usePixelData', e.target.checked)}
-                                className="w-3 h-3"
-                            />
-                            Pixel Data
-                        </label>
                     </div>
                     <label className="flex items-center gap-1">
                         <input
@@ -396,6 +392,13 @@ export const TaskChainEditor = ({
         const indent = depth * 16;
         const hasChildren = block.children && block.children.length > 0;
         const canHaveChildren = block.type !== 'custom';
+        const blockParams = block.params || {};
+        const blockColorModel = (blockParams.colorModel as number) ?? ColorModel.RGB;
+        const blockTileModel = (blockParams.tileModel as number) ?? TileModel.Raster;
+        const blockUsePalette = (blockParams.usePalette as boolean) ?? false;
+        const blockUseClusteredPalettes = (blockParams.useClusteredPalettes as boolean) ?? false;
+        const blockUsePixelData = (blockParams.usePixelData as boolean) ?? false;
+        const blockFilterTask = (blockParams.filterTask as TaskTypes) ?? TaskTypes.applyFilter;
 
         return (
             <div
@@ -478,13 +481,13 @@ export const TaskChainEditor = ({
 
                     {block.type === 'compress' && (
                         <div className="mt-2 text-xs text-gray-600">
-                            → kMeansPlusPlus {usePaletteFilter && '→ clusterPalettes'}
+                            → kMeansPlusPlus {blockUseClusteredPalettes && '→ clusterPalettes'}
                         </div>
                     )}
 
-                    {block.type === 'colorLab' && colorModel !== ColorModel.RGB && <>
+                    {block.type === 'colorLab' && <>
                         <div className="mt-2 text-xs text-gray-600">
-                            → rgb2lab
+                            {COLOR_FORWARD_TRANSFORMS[blockColorModel]}
                         </div>
                         {hasChildren && (
                             <div className="mt-1">
@@ -503,14 +506,16 @@ export const TaskChainEditor = ({
                                 <GrAdd /> Add Child Block
                             </button>
                         )}
-                        <div className="mt-2 text-xs text-gray-600">
-                            → lab2rgb
-                        </div>
+                        {blockColorModel !== ColorModel.RGB && !blockUsePixelData && COLOR_REVERSE_TRANSFORMS[blockColorModel] && (
+                            <div className="mt-2 text-xs text-gray-600">
+                                {COLOR_REVERSE_TRANSFORMS[blockColorModel]}
+                            </div>
+                        )}
                     </>}
 
-                    {block.type === 'cdt' && tileModel !== TileModel.Raster && <>
+                    {block.type === 'cdt' && <>
                         <div className="mt-2 text-xs text-gray-600">
-                            → pixels2dct
+                            {DCT_FORWARD_TRANSFORMS[blockTileModel]}
                         </div>
                         {hasChildren && (
                             <div className="mt-1">
@@ -529,14 +534,22 @@ export const TaskChainEditor = ({
                                 <GrAdd /> Add Child Block
                             </button>
                         )}
-                        <div className="mt-2 text-xs text-gray-600">
-                            → cdt2pixels
-                        </div>
+                        {blockTileModel !== TileModel.Raster && !blockUsePixelData && DCT_REVERSE_TRANSFORMS[blockTileModel] && (
+                            <div className="mt-2 text-xs text-gray-600">
+                                {DCT_REVERSE_TRANSFORMS[blockTileModel]}
+                            </div>
+                        )}
                     </>}
 
                     {block.type === 'filter' && (
                         <div className="mt-2 text-xs text-gray-600">
-                            {usePalette ? (usePaletteFilter ? '→ applyPaletteFilter' : '→ generateBSPT → applyFilter') : '→ no filter'}
+                            {!blockUsePalette
+                                ? '→ no filter'
+                                : blockFilterTask === TaskTypes.applyPaletteFilter
+                                    ? '→ clusterPalettes → applyPaletteFilter'
+                                    : blockUseClusteredPalettes
+                                        ? '→ applyFilter'
+                                        : '→ generateBSPT → applyFilter'}
                         </div>
                     )}
 
