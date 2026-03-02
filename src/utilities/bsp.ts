@@ -43,8 +43,14 @@ export function generateBsptFromPoints<T>(points:T[], calculateDivider:(a:T, b:T
                 else
                     inBack.push(point);
             });
-            const difference = inFront.length -inBack.length;
-            if(minDifference>difference){
+            // Use absolute difference to find the best balanced split
+            const difference = Math.abs(inFront.length - inBack.length);
+            // Prefer dividers that actually separate points (both sides non-empty)
+            const isBetterDivider = inFront.length > 0 && inBack.length > 0 
+                ? difference < minDifference
+                : inFrontOfBestDivider.length === 0 && inBackOfBestDivider.length === 0;
+            
+            if(isBetterDivider){
                 bestDivider = divider;
                 minDifference = difference;
                 inFrontOfBestDivider = inFront;
@@ -55,6 +61,11 @@ export function generateBsptFromPoints<T>(points:T[], calculateDivider:(a:T, b:T
             if(minDifference == 0) break;
         }
         if(minDifference == 0) break;
+    }
+    // Prevent infinite recursion if divider couldn't separate points
+    if(inFrontOfBestDivider.length === 0 || inBackOfBestDivider.length === 0) {
+        if(update) update(1);
+        return null;
     }
     const response = {
         divider: bestDivider,

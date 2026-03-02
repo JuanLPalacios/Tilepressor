@@ -28,6 +28,7 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     const { width: contextMenuWidth, setWidth: setContextMenuWidth } = useContext(MenuWidthContext);
     const menuWidth = contextMenuWidth || width;
     const menuRef = useRef<HTMLDivElement>(null);
+    const globalTaskMapRef = useRef<string|number|undefined>(undefined);
     const [isDragging, setIsDragging] = useState(false);
     const useMenuOptions = useContext(MenuOptionsContext);
     const useConfigOptions = useContext(ConfigOptionsContext);
@@ -212,7 +213,8 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
     }, [waitingToDownload, tasks, downloadAll]);
     useEffect(() => {
         if(selectedPalette==-1 && !usePaletteFilter){
-            if(map){
+            if(map && globalTaskMapRef.current !== map.id){
+                globalTaskMapRef.current = map.id;
                 const { tiles } = map;
                 if(tiles){
                     const serializedTiles = serializeTiles(tiles);
@@ -223,25 +225,21 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                 }
             }
         }
-        else if (selectedPalette >= 0) {
-            setMenuOptions({ ...menuOptions, colorPalette: { ...savedPalettes[selectedPalette] } });
+        else {
+            globalTaskMapRef.current = undefined;
+            if (selectedPalette >= 0) {
+                setMenuOptions({ ...menuOptions, colorPalette: { ...savedPalettes[selectedPalette] } });
+            }
         }
-    }, [selectedPalette, map, usePaletteFilter, colorModel, tileModel, dispatchTasksAction, savedPalettes, menuOptions, setMenuOptions]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedPalette, map, usePaletteFilter, colorModel, tileModel]);
     const applyPreset =() => {
         if(selectedPreset!=-1){
             setSelectedPreset(-1);
             setMenuOptions({ ...presets[selectedPreset].options });
         }
     };
-    useEffect(()=>{
-        if(selectedPalette==-1){
-            const id = setTimeout(()=>dispatchTasksAction({ type: 'task/add', payload: { id: GLOBAL_TASK_ID, chain: [
-                { id: GLOBAL_TASK_ID, action: TaskTypes.generateBSPT, progress: 0, props: { tiles: [], k: 0, colorModel, tileModel, colors } }
-            ] } }), 3000);
-            return ()=>clearTimeout(id);
-        }
-    },
-    [colors, selectedPalette, colorModel, tileModel, dispatchTasksAction]);
+
     return (
         <div ref={menuRef} className="relative flex" style={{ width: `${menuWidth}px`, height: `${height}px` }}>
             <Tabs tapsPosition='left' width={menuWidth} height={height}>
@@ -488,10 +486,6 @@ export const Menu = ({ width=100, height=100 }:Partial<Size>) => {
                                 <TaskChainEditor
                                     blocks={menuOptions.taskBlocks || []}
                                     onChange={(blocks) => setMenuOptions({ ...menuOptions, taskBlocks: blocks })}
-                                    colorModel={colorModel}
-                                    tileModel={tileModel}
-                                    usePalette={usePalette}
-                                    usePaletteFilter={usePaletteFilter}
                                 />
                                 <button
                                     onClick={() => {
